@@ -59,7 +59,21 @@
                             {% if email.recipients %}
                                 {% set first_recipient = email.recipients[0] %}
                                 <tr>
-                                    <td><strong>Leaver Status:</strong></td>
+                                    <td><strong>Sender Leaver Status:</strong></td>
+                                    <td>
+                                        {% if email.sender_metadata and email.sender_metadata.leaver == 'yes' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-user-times"></i> Leaver
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-user-check"></i> Active
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Recipient Info:</strong></td>
                                     <td>
                                         <span class="badge bg-{{ 'danger' if first_recipient.leaver == 'yes' else 'success' }}">
                                             {{ 'Leaver' if first_recipient.leaver == 'yes' else 'Active' }}

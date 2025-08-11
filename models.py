@@ -20,6 +20,11 @@ class EmailRecord(db.Model):
     # Relationships
     recipients = db.relationship('RecipientRecord', backref='email', lazy=True, cascade='all, delete-orphan')
     cases = db.relationship('Case', backref='email', lazy=True)
+    sender_metadata = db.relationship('SenderMetadata', 
+                                    primaryjoin='EmailRecord.sender == SenderMetadata.email',
+                                    foreign_keys='SenderMetadata.email',
+                                    uselist=False,
+                                    lazy='select')
 
 class RecipientRecord(db.Model):
     __tablename__ = 'recipient_records'

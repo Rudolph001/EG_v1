@@ -163,8 +163,8 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% set is_leaver = email.recipients|selectattr('leaver', 'equalto', 'yes')|list|length > 0 %}
-                            {% if is_leaver %}
+                            {% set sender_metadata = email.sender_metadata %}
+                            {% if sender_metadata and sender_metadata.leaver == 'yes' %}
                                 <span class="badge bg-danger">
                                     <i class="fas fa-user-times"></i> Leaver
                                 </span>

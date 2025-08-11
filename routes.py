@@ -53,14 +53,7 @@ def dashboard():
     total_senders = SenderMetadata.query.count()
     leaver_senders = SenderMetadata.query.filter_by(leaver='yes').count()
     
-    # Also count unique senders from recipient records marked as leavers
-    leaver_recipients_senders = db.session.query(func.count(func.distinct(EmailRecord.sender))).join(
-        RecipientRecord, EmailRecord.id == RecipientRecord.email_id
-    ).filter(RecipientRecord.leaver == 'yes').scalar() or 0
-    
-    # Use the higher count (recipients data is usually more complete)
-    if leaver_recipients_senders > leaver_senders:
-        leaver_senders = leaver_recipients_senders
+    # Leaver count is based on sender metadata only
 
     # Get unique sender domains
     sender_domains = db.session.query(func.count(func.distinct(SenderMetadata.email_domain))).scalar() or 0
@@ -214,7 +207,7 @@ def emails():
     page = request.args.get('page', 1, type=int)
 
     # Only show emails that are in 'processed' state (or have no state set)
-    # Also eagerly load recipients to access rule matching data
+    # Also eagerly load recipients and sender metadata
     emails = db.session.query(EmailRecord).outerjoin(
         EmailState, EmailRecord.id == EmailState.email_id
     ).filter(
@@ -223,7 +216,8 @@ def emails():
             EmailState.current_state == None
         )
     ).options(
-        db.joinedload(EmailRecord.recipients)
+        db.joinedload(EmailRecord.recipients),
+        db.joinedload(EmailRecord.sender_metadata)
     ).order_by(EmailRecord.processed_at.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
@@ -262,12 +256,6 @@ def flagged_events():
             db.exists().where(
                 db.and_(
                     RecipientRecord.email_id == EmailRecord.id,
-                    RecipientRecord.leaver == 'yes'  # Leaver recipients
-                )
-            ),
-            db.exists().where(
-                db.and_(
-                    RecipientRecord.email_id == EmailRecord.id,
                     RecipientRecord.flagged == True
                 )
             )  # Emails with flagged recipients
@@ -297,16 +285,10 @@ def flagged_events():
         )
     ).count()
     
-    # Count high-risk flagged events (leaver senders from metadata or recipients)
-    high_risk_metadata = db.session.query(EmailRecord).join(
+    # Count high-risk flagged events (leaver senders from metadata)
+    high_risk_count = db.session.query(EmailRecord).join(
         SenderMetadata, EmailRecord.sender == SenderMetadata.email
     ).filter(SenderMetadata.leaver == 'yes').count()
-    
-    high_risk_recipients = db.session.query(EmailRecord).join(
-        RecipientRecord, EmailRecord.id == RecipientRecord.email_id
-    ).filter(RecipientRecord.leaver == 'yes').count()
-    
-    high_risk_count = max(high_risk_metadata, high_risk_recipients)
     
     stats = {
         'total_flagged': total_flagged,
