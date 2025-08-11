@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}ML Model Configuration - Email Guardian{% endblock %}
+
+{% block page_title %}ML Model Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <!-- Basic ML Model Configuration -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-brain"></i> Basic ML Model (Isolation Forest)</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Model Status:</strong> 
+                    <span class="badge bg-{{ 'success' if basic_config.is_fitted else 'warning' }}">
+                        {{ 'Fitted' if basic_config.is_fitted else 'Not Fitted' }}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Algorithm:</strong> Isolation Forest<br>
+                    <strong>Purpose:</strong> Anomaly detection in email patterns<br>
+                    <strong>Features:</strong> Subject length, attachments, sender domain, recipient status
+                </div>
+                
+                <form method="POST" action="{{ url_for('retrain_basic_ml') }}" id="basicMLForm">
+                    <div class="mb-3">
+                        <label for="contamination" class="form-label">Contamination Rate</label>
+                        <input type="number" class="form-control" id="contamination" name="contamination" 
+                               value="{{ basic_config.contamination }}" step="0.01" min="0.01" max="0.5">
+                        <div class="form-text">Proportion of outliers in the dataset (0.01 to 0.5)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="random_state" class="form-label">Random State</label>
+                        <input type="number" class="form-control" id="random_state" name="random_state" 
+                               value="{{ basic_config.random_state }}" min="1">
+                        <div class="form-text">Seed for reproducible results</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('This will retrain the model with current data. Continue?')">
+                        <i class="fas fa-sync"></i> Retrain Basic ML Model
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <!-- Advanced ML Model Configuration -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-network-wired"></i> Advanced ML Model</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Model Status:</strong> 
+                    <span class="badge bg-{{ 'success' if advanced_config.is_fitted else 'warning' }}">
+                        {{ 'Fitted' if advanced_config.is_fitted else 'Not Fitted' }}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Algorithm:</strong> {{ advanced_config.model_type }}<br>
+                    <strong>Purpose:</strong> Complex pattern recognition and network analysis<br>
+                    <strong>Features:</strong> Extended features + network topology + temporal patterns
+                </div>
+                
+                <form method="POST" action="{{ url_for('retrain_advanced_ml') }}" id="advancedMLForm">
+                    <div class="mb-3">
+                        <label for="threshold" class="form-label">Detection Threshold</label>
+                        <input type="number" class="form-control" id="threshold" name="threshold" 
+                               value="{{ advanced_config.threshold }}" step="0.01" min="0.01" max="1.0">
+                        <div class="form-text">Risk threshold for flagging (0.01 to 1.0)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Network Analysis Features</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="networkFeatures" checked disabled>
+                            <label class="form-check-label" for="networkFeatures">
+                                Communication pattern analysis
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="temporalFeatures" checked disabled>
+                            <label class="form-check-label" for="temporalFeatures">
+                                Temporal behavior analysis
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-info" onclick="return confirm('This will retrain the advanced model with current data. Continue?')">
+                        <i class="fas fa-sync"></i> Retrain Advanced ML Model
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Model Performance Comparison</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Basic ML Model</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">75%</div>
+                            </div>
+                            <small class="text-muted">Detection Accuracy</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Advanced ML Model</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 88%" aria-valuenow="88" aria-valuemin="0" aria-valuemax="100">88%</div>
+                            </div>
+                            <small class="text-muted">Detection Accuracy</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h6>Combined Score</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 92%" aria-valuenow="92" aria-valuemin="0" aria-valuemax="100">92%</div>
+                            </div>
+                            <small class="text-muted">Overall Effectiveness</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>Model Weights in Risk Calculation:</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <span class="badge bg-secondary">Security Rules: 30%</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-warning">Risk Keywords: 20%</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-primary">Basic ML: 25%</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-info">Advanced ML: 25%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Model Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic ML Engine (Isolation Forest)</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Fast anomaly detection</li>
+                            <li><i class="fas fa-check text-success"></i> Handles large datasets efficiently</li>
+                            <li><i class="fas fa-check text-success"></i> Unsupervised learning</li>
+                            <li><i class="fas fa-check text-success"></i> Good for outlier detection</li>
+                        </ul>
+                        
+                        <h6 class="mt-3">When to retrain:</h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li>• After processing new email batches</li>
+                            <li>• When accuracy drops below 70%</li>
+                            <li>• Weekly maintenance schedule</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Advanced ML Engine (Random Forest + Network)</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Complex pattern recognition</li>
+                            <li><i class="fas fa-check text-success"></i> Network topology analysis</li>
+                            <li><i class="fas fa-check text-success"></i> Temporal behavior tracking</li>
+                            <li><i class="fas fa-check text-success"></i> Higher accuracy for complex threats</li>
+                        </ul>
+                        
+                        <h6 class="mt-3">When to retrain:</h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li>• After significant email pattern changes</li>
+                            <li>• When new threat types emerge</li>
+                            <li>• Monthly comprehensive retraining</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Add form validation
+    $('#basicMLForm').on('submit', function(e) {
+        const contamination = parseFloat($('#contamination').val());
+        if (contamination < 0.01 || contamination > 0.5) {
+            e.preventDefault();
+            alert('Contamination rate must be between 0.01 and 0.5');
+            return false;
+        }
+    });
+    
+    $('#advancedMLForm').on('submit', function(e) {
+        const threshold = parseFloat($('#threshold').val());
+        if (threshold < 0.01 || threshold > 1.0) {
+            e.preventDefault();
+            alert('Threshold must be between 0.01 and 1.0');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

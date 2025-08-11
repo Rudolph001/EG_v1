@@ -1027,6 +1027,210 @@ def cleared_cases_dashboard():
                          cleared_emails=cleared_emails,
                          title='Cleared Cases Dashboard')
 
+@app.route('/ml-analytics')
+def ml_analytics():
+    """ML Analytics Dashboard showing model performance and results"""
+    
+    # Get basic ML model statistics
+    try:
+        from ml_engines import BasicMLEngine, AdvancedMLEngine
+        basic_ml = BasicMLEngine()
+        advanced_ml = AdvancedMLEngine()
+        
+        # Get emails with ML scores
+        emails_with_scores = db.session.query(
+            EmailRecord.id,
+            EmailRecord.sender,
+            EmailRecord.subject,
+            EmailRecord.processed_at,
+            func.avg(RecipientRecord.ml_score).label('avg_basic_ml'),
+            func.avg(RecipientRecord.advanced_ml_score).label('avg_advanced_ml'),
+            func.avg(RecipientRecord.risk_score).label('avg_risk_score'),
+            func.count(RecipientRecord.id).label('recipient_count')
+        ).join(
+            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
+        ).group_by(
+            EmailRecord.id, EmailRecord.sender, EmailRecord.subject, EmailRecord.processed_at
+        ).order_by(EmailRecord.processed_at.desc()).limit(100).all()
+        
+        # Calculate model performance metrics
+        total_emails = EmailRecord.query.count()
+        flagged_by_basic_ml = db.session.query(RecipientRecord).filter(
+            RecipientRecord.ml_score >= 5.0
+        ).count()
+        flagged_by_advanced_ml = db.session.query(RecipientRecord).filter(
+            RecipientRecord.advanced_ml_score >= 5.0
+        ).count()
+        
+        # Score distribution for charts
+        basic_ml_scores = db.session.query(RecipientRecord.ml_score).filter(
+            RecipientRecord.ml_score.isnot(None)
+        ).all()
+        advanced_ml_scores = db.session.query(RecipientRecord.advanced_ml_score).filter(
+            RecipientRecord.advanced_ml_score.isnot(None)
+        ).all()
+        
+        # Model accuracy metrics (simplified)
+        high_risk_threshold = 7.0
+        medium_risk_threshold = 5.0
+        
+        basic_ml_high_risk = len([s[0] for s in basic_ml_scores if s[0] >= high_risk_threshold])
+        basic_ml_medium_risk = len([s[0] for s in basic_ml_scores if medium_risk_threshold <= s[0] < high_risk_threshold])
+        basic_ml_low_risk = len([s[0] for s in basic_ml_scores if s[0] < medium_risk_threshold])
+        
+        advanced_ml_high_risk = len([s[0] for s in advanced_ml_scores if s[0] >= high_risk_threshold])
+        advanced_ml_medium_risk = len([s[0] for s in advanced_ml_scores if medium_risk_threshold <= s[0] < high_risk_threshold])
+        advanced_ml_low_risk = len([s[0] for s in advanced_ml_scores if s[0] < medium_risk_threshold])
+        
+        stats = {
+            'total_emails': total_emails,
+            'total_recipients': len(basic_ml_scores),
+            'basic_ml_flagged': flagged_by_basic_ml,
+            'advanced_ml_flagged': flagged_by_advanced_ml,
+            'basic_ml_model_status': 'Fitted' if basic_ml.is_fitted else 'Not Fitted',
+            'advanced_ml_model_status': 'Fitted' if advanced_ml.is_fitted else 'Not Fitted',
+            'basic_ml_distribution': {
+                'high_risk': basic_ml_high_risk,
+                'medium_risk': basic_ml_medium_risk,
+                'low_risk': basic_ml_low_risk
+            },
+            'advanced_ml_distribution': {
+                'high_risk': advanced_ml_high_risk,
+                'medium_risk': advanced_ml_medium_risk,
+                'low_risk': advanced_ml_low_risk
+            }
+        }
+        
+        return render_template('ml_analytics.html', 
+                             emails=emails_with_scores,
+                             stats=stats,
+                             title='ML Analytics Dashboard')
+        
+    except Exception as e:
+        flash(f'Error loading ML analytics: {str(e)}', 'error')
+        return render_template('ml_analytics.html', 
+                             emails=[],
+                             stats={},
+                             title='ML Analytics Dashboard')
+
+@app.route('/ml-model-config')
+def ml_model_config():
+    """ML Model Configuration page"""
+    try:
+        from ml_engines import BasicMLEngine, AdvancedMLEngine
+        basic_ml = BasicMLEngine()
+        advanced_ml = AdvancedMLEngine()
+        
+        # Get current model parameters
+        basic_config = {
+            'contamination': getattr(basic_ml.isolation_forest, 'contamination', 0.1),
+            'random_state': getattr(basic_ml.isolation_forest, 'random_state', 42),
+            'is_fitted': basic_ml.is_fitted
+        }
+        
+        advanced_config = {
+            'threshold': getattr(advanced_ml, 'threshold', 0.1),
+            'is_fitted': advanced_ml.is_fitted,
+            'model_type': 'Random Forest + Network Analysis'
+        }
+        
+        return render_template('ml_model_config.html',
+                             basic_config=basic_config,
+                             advanced_config=advanced_config,
+                             title='ML Model Configuration')
+        
+    except Exception as e:
+        flash(f'Error loading model configuration: {str(e)}', 'error')
+        return redirect(url_for('ml_analytics'))
+
+@app.route('/retrain-basic-ml', methods=['POST'])
+def retrain_basic_ml():
+    """Retrain the basic ML model"""
+    try:
+        contamination = float(request.form.get('contamination', 0.1))
+        random_state = int(request.form.get('random_state', 42))
+        
+        from ml_engines import BasicMLEngine
+        basic_ml = BasicMLEngine()
+        
+        # Update parameters
+        basic_ml.isolation_forest.contamination = contamination
+        basic_ml.isolation_forest.random_state = random_state
+        
+        # Retrain with recent data
+        recent_recipients = RecipientRecord.query.limit(1000).all()
+        if recent_recipients:
+            for recipient in recent_recipients:
+                features = {
+                    'subject_length': len(recipient.email.subject or ''),
+                    'has_attachments': 1 if recipient.email.attachments else 0,
+                    'sender_domain_length': len(recipient.email.sender.split('@')[1]) if '@' in recipient.email.sender else 0,
+                    'is_external': 1 if '@' in recipient.email.sender and not recipient.email.sender.endswith('.internal') else 0,
+                    'is_leaver': 1 if recipient.leaver == 'yes' else 0,
+                    'has_termination': 1 if recipient.termination else 0,
+                    'security_score': recipient.security_score or 0,
+                    'risk_score': recipient.risk_score or 0
+                }
+                # Update ML score
+                new_score = basic_ml.predict_risk(features)
+                recipient.ml_score = new_score
+            
+            db.session.commit()
+            flash('Basic ML model retrained successfully!', 'success')
+        else:
+            flash('No data available for retraining.', 'warning')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error retraining basic ML model: {str(e)}', 'error')
+    
+    return redirect(url_for('ml_model_config'))
+
+@app.route('/retrain-advanced-ml', methods=['POST'])
+def retrain_advanced_ml():
+    """Retrain the advanced ML model"""
+    try:
+        threshold = float(request.form.get('threshold', 0.1))
+        
+        from ml_engines import AdvancedMLEngine
+        advanced_ml = AdvancedMLEngine()
+        advanced_ml.threshold = threshold
+        
+        # Retrain with recent data
+        recent_recipients = RecipientRecord.query.limit(1000).all()
+        if recent_recipients:
+            for recipient in recent_recipients:
+                # Update advanced ML score
+                # Create features for advanced ML
+                features = {
+                    'subject_length': len(recipient.email.subject or ''),
+                    'has_attachments': 1 if recipient.email.attachments else 0,
+                    'sender_domain_length': len(recipient.email.sender.split('@')[1]) if '@' in recipient.email.sender else 0,
+                    'is_external': 1 if '@' in recipient.email.sender and not recipient.email.sender.endswith('.internal') else 0,
+                    'is_leaver': 1 if recipient.leaver == 'yes' else 0,
+                    'has_termination': 1 if recipient.termination else 0,
+                    'security_score': recipient.security_score or 0,
+                    'risk_score': recipient.risk_score or 0,
+                    'hour_of_day': recipient.email.timestamp.hour if recipient.email.timestamp else 12,
+                    'day_of_week': recipient.email.timestamp.weekday() if recipient.email.timestamp else 1,
+                    'subject_exclamation_count': (recipient.email.subject or '').count('!'),
+                    'subject_question_count': (recipient.email.subject or '').count('?'),
+                    'subject_caps_ratio': len([c for c in (recipient.email.subject or '') if c.isupper()]) / max(len(recipient.email.subject or ''), 1)
+                }
+                new_score = advanced_ml.predict_risk(features)
+                recipient.advanced_ml_score = new_score
+            
+            db.session.commit()
+            flash('Advanced ML model retrained successfully!', 'success')
+        else:
+            flash('No data available for retraining.', 'warning')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error retraining advanced ML model: {str(e)}', 'error')
+    
+    return redirect(url_for('ml_model_config'))
+
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""

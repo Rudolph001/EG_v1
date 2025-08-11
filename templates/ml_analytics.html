@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}ML Analytics Dashboard - Email Guardian{% endblock %}
+
+{% block page_title %}ML Analytics Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- ML Model Status Cards -->
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Basic ML Model</h5>
+                        <p class="card-text">{{ stats.basic_ml_model_status if stats else 'Loading...' }}</p>
+                    </div>
+                    <i class="fas fa-brain fa-2x"></i>
+                </div>
+                <small>Isolation Forest Algorithm</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Advanced ML Model</h5>
+                        <p class="card-text">{{ stats.advanced_ml_model_status if stats else 'Loading...' }}</p>
+                    </div>
+                    <i class="fas fa-network-wired fa-2x"></i>
+                </div>
+                <small>Random Forest + Network Analysis</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Basic ML Flags</h5>
+                        <p class="card-text">{{ stats.basic_ml_flagged if stats else '0' }}</p>
+                    </div>
+                    <i class="fas fa-flag fa-2x"></i>
+                </div>
+                <small>Recipients flagged by Basic ML</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Advanced ML Flags</h5>
+                        <p class="card-text">{{ stats.advanced_ml_flagged if stats else '0' }}</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+                <small>Recipients flagged by Advanced ML</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- ML Score Distribution Charts -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Basic ML Risk Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="basicMLChart" width="400" height="300"></canvas>
+                {% if stats and stats.basic_ml_distribution %}
+                <div class="mt-3">
+                    <span class="badge bg-danger">High Risk: {{ stats.basic_ml_distribution.high_risk }}</span>
+                    <span class="badge bg-warning">Medium Risk: {{ stats.basic_ml_distribution.medium_risk }}</span>
+                    <span class="badge bg-success">Low Risk: {{ stats.basic_ml_distribution.low_risk }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Advanced ML Risk Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="advancedMLChart" width="400" height="300"></canvas>
+                {% if stats and stats.advanced_ml_distribution %}
+                <div class="mt-3">
+                    <span class="badge bg-danger">High Risk: {{ stats.advanced_ml_distribution.high_risk }}</span>
+                    <span class="badge bg-warning">Medium Risk: {{ stats.advanced_ml_distribution.medium_risk }}</span>
+                    <span class="badge bg-success">Low Risk: {{ stats.advanced_ml_distribution.low_risk }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <h5><i class="fas fa-table"></i> Email ML Scores Analysis</h5>
+                <a href="{{ url_for('ml_model_config') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-cogs"></i> Configure Models
+                </a>
+            </div>
+            <div class="card-body">
+                {% if emails %}
+                <div class="table-responsive">
+                    <table class="table table-striped" id="mlAnalyticsTable">
+                        <thead>
+                            <tr>
+                                <th>Email ID</th>
+                                <th>Sender</th>
+                                <th>Subject</th>
+                                <th>Recipients</th>
+                                <th>Basic ML Score</th>
+                                <th>Advanced ML Score</th>
+                                <th>Risk Score</th>
+                                <th>Processed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for email in emails %}
+                            <tr>
+                                <td><code>ML-{{ email.id }}</code></td>
+                                <td>{{ email.sender }}</td>
+                                <td>
+                                    <span class="text-truncate" style="max-width: 200px; display: inline-block;" title="{{ email.subject or 'No Subject' }}">
+                                        {{ email.subject or 'No Subject' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ email.recipient_count }} recipients</span>
+                                </td>
+                                <td>
+                                    {% set basic_score = email.avg_basic_ml or 0 %}
+                                    <span class="badge bg-{{ 'danger' if basic_score >= 7 else 'warning' if basic_score >= 5 else 'success' }}">
+                                        {{ "%.2f"|format(basic_score) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set advanced_score = email.avg_advanced_ml or 0 %}
+                                    <span class="badge bg-{{ 'danger' if advanced_score >= 7 else 'warning' if advanced_score >= 5 else 'success' }}">
+                                        {{ "%.2f"|format(advanced_score) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set risk_score = email.avg_risk_score or 0 %}
+                                    <span class="badge bg-{{ 'danger' if risk_score >= 7 else 'warning' if risk_score >= 5 else 'info' }}">
+                                        {{ "%.2f"|format(risk_score) }}
+                                    </span>
+                                </td>
+                                <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-robot fa-3x text-muted mb-3"></i>
+                    <h5>No ML Analytics Data</h5>
+                    <p class="text-muted">No ML scoring data is available yet. Process some emails first.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#mlAnalyticsTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 7, "desc" ]], // Sort by processed date
+        "columnDefs": [
+            { "orderable": false, "targets": 8 } // Disable sorting on actions column
+        ]
+    });
+    
+    {% if stats %}
+    // Basic ML Chart
+    const basicMLCtx = document.getElementById('basicMLChart').getContext('2d');
+    new Chart(basicMLCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High Risk (≥7.0)', 'Medium Risk (5.0-6.9)', 'Low Risk (<5.0)'],
+            datasets: [{
+                data: [
+                    {{ stats.basic_ml_distribution.high_risk or 0 }},
+                    {{ stats.basic_ml_distribution.medium_risk or 0 }},
+                    {{ stats.basic_ml_distribution.low_risk or 0 }}
+                ],
+                backgroundColor: [
+                    '#dc3545',
+                    '#ffc107', 
+                    '#28a745'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Basic ML Risk Distribution'
+                }
+            }
+        }
+    });
+    
+    // Advanced ML Chart
+    const advancedMLCtx = document.getElementById('advancedMLChart').getContext('2d');
+    new Chart(advancedMLCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High Risk (≥7.0)', 'Medium Risk (5.0-6.9)', 'Low Risk (<5.0)'],
+            datasets: [{
+                data: [
+                    {{ stats.advanced_ml_distribution.high_risk or 0 }},
+                    {{ stats.advanced_ml_distribution.medium_risk or 0 }},
+                    {{ stats.advanced_ml_distribution.low_risk or 0 }}
+                ],
+                backgroundColor: [
+                    '#dc3545',
+                    '#ffc107',
+                    '#28a745'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Advanced ML Risk Distribution'
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}
