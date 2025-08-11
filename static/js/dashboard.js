@@ -190,11 +190,18 @@ class EmailGuardianDashboard {
         if (this.charts.dailyProcessing && data.daily_processing) {
             this.charts.dailyProcessing.data.labels = data.daily_processing.labels;
             this.charts.dailyProcessing.data.datasets[0].data = data.daily_processing.data;
+            
+            // Update cases data if available
+            if (data.daily_cases) {
+                this.charts.dailyProcessing.data.datasets[1].data = data.daily_cases.data;
+            }
+            
             this.charts.dailyProcessing.update();
         }
 
         // Update severity distribution chart
         if (this.charts.severity && data.severity_distribution) {
+            this.charts.severity.data.labels = data.severity_distribution.labels;
             this.charts.severity.data.datasets[0].data = data.severity_distribution.data;
             this.charts.severity.update();
         }

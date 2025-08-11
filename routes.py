@@ -302,10 +302,18 @@ def audit():
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""
-    # Get case distribution by severity
+    # Get case distribution by severity with proper ordering
+    severity_order = ['low', 'medium', 'high', 'critical']
     severity_counts = db.session.query(
         Case.severity, func.count(Case.id)
     ).group_by(Case.severity).all()
+    
+    # Create severity data with all categories
+    severity_dict = {s[0]: s[1] for s in severity_counts}
+    severity_data = {
+        'labels': ['Low', 'Medium', 'High', 'Critical'],
+        'data': [severity_dict.get(level, 0) for level in severity_order]
+    }
     
     # Get processing statistics for the last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
@@ -314,37 +322,45 @@ def dashboard_data():
         func.count(EmailRecord.id)
     ).filter(EmailRecord.processed_at >= seven_days_ago).group_by(
         func.date(EmailRecord.processed_at)
-    ).all()
+    ).order_by(func.date(EmailRecord.processed_at)).all()
     
-    # If no severity data, provide default structure
-    if not severity_counts:
-        severity_data = {
-            'labels': ['Low', 'Medium', 'High', 'Critical'],
-            'data': [0, 0, 0, 0]
-        }
-    else:
-        severity_labels = [s[0] for s in severity_counts]
-        severity_values = [s[1] for s in severity_counts]
-        severity_data = {
-            'labels': severity_labels,
-            'data': severity_values
-        }
+    # Create complete 7-day dataset
+    date_dict = {str(d[0]): d[1] for d in daily_stats}
+    daily_labels = []
+    daily_values = []
     
-    # If no daily stats, provide last 7 days with zeros
-    if not daily_stats:
-        daily_data = {
-            'labels': [(datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)],
-            'data': [0] * 7
-        }
-    else:
-        daily_data = {
-            'labels': [str(d[0]) for d in daily_stats],
-            'data': [d[1] for d in daily_stats]
-        }
+    for i in range(6, -1, -1):
+        date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+        daily_labels.append(date)
+        daily_values.append(date_dict.get(date, 0))
+    
+    daily_data = {
+        'labels': daily_labels,
+        'data': daily_values
+    }
+    
+    # Get case counts for the same period
+    daily_case_stats = db.session.query(
+        func.date(Case.created_at),
+        func.count(Case.id)
+    ).filter(Case.created_at >= seven_days_ago).group_by(
+        func.date(Case.created_at)
+    ).order_by(func.date(Case.created_at)).all()
+    
+    case_dict = {str(d[0]): d[1] for d in daily_case_stats}
+    case_values = []
+    
+    for i in range(6, -1, -1):
+        date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+        case_values.append(case_dict.get(date, 0))
     
     return jsonify({
         'severity_distribution': severity_data,
-        'daily_processing': daily_data
+        'daily_processing': daily_data,
+        'daily_cases': {
+            'labels': daily_labels,
+            'data': case_values
+        }
     })
 
 # Error handlers
