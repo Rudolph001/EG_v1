@@ -42,26 +42,38 @@ class EmailProcessingPipeline:
                     email_groups[email_key] = []
                 email_groups[email_key].append(row)
             
-            # Process each email group
-            for email_key, recipients in email_groups.items():
-                email_record = self._create_email_record(recipients[0])
-                results['total_emails'] += 1
+            # Process emails in batches to avoid memory issues
+            batch_size = 10
+            email_items = list(email_groups.items())
+            
+            for i in range(0, len(email_items), batch_size):
+                batch = email_items[i:i + batch_size]
                 
-                processed_recipients = []
+                for email_key, recipients in batch:
+                    email_record = self._create_email_record(recipients[0])
+                    results['total_emails'] += 1
+                    
+                    processed_recipients = []
+                    
+                    for recipient_data in recipients:
+                        recipient_record = self._process_recipient(email_record, recipient_data)
+                        if recipient_record:
+                            processed_recipients.append(recipient_record)
+                            results['total_recipients'] += 1
+                            
+                            if recipient_record.flagged:
+                                results['flagged'] += 1
+                            if recipient_record.case_generated:
+                                results['cases_generated'] += 1
+                    
+                    # Stage 11: Database Write
+                    self._stage_11_database_write(email_record, processed_recipients)
                 
-                for recipient_data in recipients:
-                    recipient_record = self._process_recipient(email_record, recipient_data)
-                    if recipient_record:
-                        processed_recipients.append(recipient_record)
-                        results['total_recipients'] += 1
-                        
-                        if recipient_record.flagged:
-                            results['flagged'] += 1
-                        if recipient_record.case_generated:
-                            results['cases_generated'] += 1
+                # Commit batch and clear session to prevent memory buildup
+                db.session.commit()
+                db.session.close()
                 
-                # Stage 11: Database Write
-                self._stage_11_database_write(email_record, processed_recipients)
+                self.logger.info(f"Processed batch {i//batch_size + 1} of {(len(email_items) + batch_size - 1)//batch_size}")
             
             self.logger.info(f"CSV processing completed: {results}")
             return results
@@ -181,12 +193,12 @@ class EmailProcessingPipeline:
     
     def _stage_3_exclusion_rules(self, recipient_record, email_record):
         """Stage 3: Filter out emails based on exclusion criteria"""
-        exclusion_rules = ExclusionRule.query.filter_by(active=True).all()
+        # Cache exclusion rules to avoid repeated database queries
+        if not hasattr(self, '_cached_exclusion_rules'):
+            self._cached_exclusion_rules = ExclusionRule.query.filter_by(active=True).all()
         
-        for rule in exclusion_rules:
+        for rule in self._cached_exclusion_rules:
             if self._match_rule(rule, recipient_record, email_record):
-                self._log_processing(email_record.id, 'exclusion_rules', 'success', 
-                                   f'Excluded by rule: {rule.name}')
                 recipient_record.excluded = True
                 return True
         
@@ -194,45 +206,50 @@ class EmailProcessingPipeline:
     
     def _stage_4_whitelist_filtering(self, recipient_record, email_record):
         """Stage 4: Check against whitelisted domains and senders"""
+        # Cache whitelist data to avoid repeated database queries
+        if not hasattr(self, '_cached_whitelist_senders'):
+            self._cached_whitelist_senders = {s.email.lower() for s in WhitelistSender.query.filter_by(active=True).all()}
+        if not hasattr(self, '_cached_whitelist_domains'):
+            self._cached_whitelist_domains = {d.domain.lower() for d in WhitelistDomain.query.filter_by(active=True).all()}
+        
         # Check sender whitelist
-        whitelisted_senders = WhitelistSender.query.filter_by(active=True).all()
-        for sender in whitelisted_senders:
-            if sender.email.lower() == email_record.sender.lower():
-                recipient_record.whitelisted = True
-                return
+        if email_record.sender.lower() in self._cached_whitelist_senders:
+            recipient_record.whitelisted = True
+            return
         
         # Check domain whitelist
         sender_domain = email_record.sender.split('@')[1].lower() if '@' in email_record.sender else ''
-        whitelisted_domains = WhitelistDomain.query.filter_by(active=True).all()
-        for domain in whitelisted_domains:
-            if domain.domain.lower() == sender_domain:
-                recipient_record.whitelisted = True
-                return
+        if sender_domain in self._cached_whitelist_domains:
+            recipient_record.whitelisted = True
+            return
     
     def _stage_5_security_rules(self, recipient_record, email_record):
         """Stage 5: Apply security rules and calculate score"""
-        security_rules = SecurityRule.query.filter_by(active=True).all()
+        # Cache security rules to avoid repeated database queries
+        if not hasattr(self, '_cached_security_rules'):
+            self._cached_security_rules = SecurityRule.query.filter_by(active=True).all()
+        
         security_score = 0.0
         
-        for rule in security_rules:
+        for rule in self._cached_security_rules:
             if self._match_rule(rule, recipient_record, email_record):
                 # Add score based on severity
                 severity_weights = {'low': 1.0, 'medium': 2.0, 'high': 3.0, 'critical': 5.0}
                 security_score += severity_weights.get(rule.severity, 1.0)
-                
-                self._log_processing(email_record.id, 'security_rules', 'warning',
-                                   f'Triggered rule: {rule.name}')
         
         recipient_record.security_score = security_score
     
     def _stage_6_risk_keywords(self, recipient_record, email_record):
         """Stage 6: Detect risk keywords and calculate risk score"""
-        risk_keywords = RiskKeyword.query.filter_by(active=True).all()
+        # Cache risk keywords to avoid repeated database queries
+        if not hasattr(self, '_cached_risk_keywords'):
+            self._cached_risk_keywords = RiskKeyword.query.filter_by(active=True).all()
+        
         risk_score = 0.0
         
         text_to_analyze = f"{email_record.subject} {email_record.attachments} {recipient_record.wordlist_subject} {recipient_record.wordlist_attachment}".lower()
         
-        for keyword in risk_keywords:
+        for keyword in self._cached_risk_keywords:
             if keyword.keyword.lower() in text_to_analyze:
                 risk_score += keyword.weight
         
@@ -302,19 +319,17 @@ class EmailProcessingPipeline:
             db.session.add(email_record)
             db.session.flush()  # This assigns the ID without committing
             
-            # Now set the email_id for all recipients and add them
+            # Now set the email_id for all recipients and add them in batch
             for recipient in processed_recipients:
                 recipient.email_id = email_record.id
-                db.session.add(recipient)
             
+            # Add all recipients at once
+            db.session.add_all(processed_recipients)
             db.session.commit()
-            
-            self._log_processing(email_record.id, 'database_write', 'success',
-                               f'Saved email with {len(processed_recipients)} recipients')
             
         except Exception as e:
             db.session.rollback()
-            self._log_processing(email_record.id, 'database_write', 'error', str(e))
+            self.logger.error(f"Database write error: {str(e)}")
             raise
     
     def _create_email_record(self, first_recipient_data):
@@ -392,12 +407,5 @@ class EmailProcessingPipeline:
             return 'low'
     
     def _log_processing(self, email_id, stage, status, message, processing_time=None):
-        """Log processing step"""
-        log = ProcessingLog(
-            email_id=email_id,
-            stage=stage,
-            status=status,
-            message=message,
-            processing_time=processing_time
-        )
-        db.session.add(log)
+        """Log processing step - using Python logging instead of database for performance"""
+        self.logger.info(f"Email {email_id} - {stage}: {status} - {message}")
