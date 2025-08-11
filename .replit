@@ -41,3 +41,6 @@ args = "gunicorn --bind 0.0.0.0:5000 --timeout 300 --reuse-port --reload main:ap
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[agent]
+integrations = ["python_openai==1.0.0", "python_anthropic==1.0.0"]

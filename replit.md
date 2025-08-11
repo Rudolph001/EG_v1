@@ -20,7 +20,12 @@ Preferred communication style: Simple, everyday language.
 - **Web Framework**: Flask with SQLAlchemy ORM
 - **Database Layer**: SQLAlchemy with declarative base model structure
 - **Processing Pipeline**: 11-stage email analysis pipeline including data ingestion, normalization, security analysis, and case generation
-- **Machine Learning**: Dual ML engine architecture with BasicMLEngine (Isolation Forest) and AdvancedMLEngine for risk scoring and anomaly detection
+- **Advanced Machine Learning**: Triple ML engine architecture:
+  - **BasicMLEngine**: XGBoost + Isolation Forest ensemble with enhanced NLP analysis
+  - **AdvancedMLEngine**: 4-model ensemble (XGBoost, Gradient Boosting, Balanced Random Forest, SVM) with behavioral pattern analysis and network analysis
+  - **AdaptiveMLEngine**: Self-learning system with continuous improvement from human feedback
+- **NLP Capabilities**: Sentiment analysis, phishing keyword detection, text pattern analysis using TextBlob
+- **Behavioral Analysis**: Sender pattern tracking, temporal anomaly detection, communication network analysis
 - **Security Features**: Proxy fix middleware, session management, file upload validation
 
 ### Data Storage Solutions
@@ -30,6 +35,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Processing Components
 - **Pipeline Architecture**: Multi-stage processing including data ingestion, email normalization, security rule application, ML scoring, and case generation
+- **Advanced ML Architecture**: Three-tier ML system with BasicMLEngine (XGBoost + Isolation Forest), AdvancedMLEngine (ensemble of 4 models), and AdaptiveMLEngine (self-learning)
 - **Risk Assessment**: Weighted scoring system combining security rules (30%), risk keywords (20%), basic ML (25%), and advanced ML (25%)
 - **Threshold Management**: Configurable thresholds for case generation (8.0) and flagging (5.0)
 
@@ -42,10 +48,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Python Libraries
 - **Flask**: Web framework with SQLAlchemy integration
-- **scikit-learn**: Machine learning library for Isolation Forest and Random Forest algorithms
+- **scikit-learn**: Machine learning library for ensemble methods, preprocessing, and model evaluation
+- **XGBoost**: Advanced gradient boosting framework for high-performance ML
+- **TextBlob**: Natural language processing for sentiment analysis and text processing
+- **imbalanced-learn**: Specialized library for handling imbalanced datasets (when available)
 - **pandas**: Data processing and CSV handling
 - **numpy**: Numerical computations for ML features
-- **networkx**: Graph analysis for advanced threat detection
+- **networkx**: Graph analysis for communication network analysis and centrality metrics
 
 ### Frontend Dependencies
 - **Bootstrap 5**: CSS framework via CDN
