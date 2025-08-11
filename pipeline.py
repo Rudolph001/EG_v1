@@ -466,9 +466,14 @@ class EmailProcessingPipeline:
         elif rule_type == 'attachment':
             return self._match_pattern(pattern, email_record.attachments or '')
         elif rule_type == 'leaver':
-            return recipient_record.leaver == 'yes'
+            # Check if leaver field contains the pattern value
+            leaver_value = (recipient_record.leaver or '').lower().strip()
+            pattern_value = pattern.lower().strip()
+            return pattern_value in leaver_value or leaver_value == 'yes'
         elif rule_type == 'termination':
-            return bool(recipient_record.termination)
+            termination_value = (recipient_record.termination or '').lower().strip()
+            pattern_value = pattern.lower().strip()
+            return pattern_value in termination_value or bool(termination_value)
         elif rule_type == 'recipients':
             return len(email_record.recipients) > 1
 
@@ -564,6 +569,12 @@ class EmailProcessingPipeline:
         features['subject_caps_ratio'] = sum(1 for c in (email_record.subject or '') if c.isupper()) / max(len(email_record.subject or ''), 1)
 
         return features
+
+    def _match_pattern(self, pattern, text):
+        """Match pattern against text"""
+        if not pattern or not text:
+            return False
+        return pattern.lower() in text.lower()
 
     def _determine_severity(self, combined_score):
         """Determine case severity based on combined risk score"""

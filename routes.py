@@ -251,6 +251,35 @@ def add_security_rule():
     
     return redirect(url_for('rules_engine'))
 
+@app.route('/api/rules/<int:rule_id>', methods=['GET'])
+def get_security_rule_api(rule_id):
+    """API endpoint to get rule data for editing"""
+    rule = SecurityRule.query.get_or_404(rule_id)
+    
+    import json
+    try:
+        rule_config = json.loads(rule.pattern)
+        conditions = rule_config.get('conditions', [])
+        logical_operator = rule_config.get('logical_operator', 'AND')
+    except (json.JSONDecodeError, TypeError):
+        # Legacy rule - convert to new format
+        conditions = [{
+            'field': rule.rule_type,
+            'operator': 'contains',
+            'value': rule.pattern
+        }]
+        logical_operator = 'AND'
+    
+    return jsonify({
+        'id': rule.id,
+        'name': rule.name,
+        'description': rule.description,
+        'action': rule.action,
+        'severity': rule.severity,
+        'conditions': conditions,
+        'logical_operator': logical_operator
+    })
+
 @app.route('/rules-engine/edit/<int:rule_id>', methods=['GET', 'POST'])
 def edit_security_rule(rule_id):
     """Edit existing security rule"""
