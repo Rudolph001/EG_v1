@@ -72,6 +72,11 @@
                             <div class="collapse" id="casesMenu">
                                 <ul class="nav flex-column ms-3">
                                     <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('emails') }}">
+                                            <i class="fas fa-envelope"></i> Processed Emails
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
                                         <a class="nav-link text-white-50" href="{{ url_for('cases') }}">
                                             <i class="fas fa-flag"></i> Flagged Events
                                         </a>
@@ -84,11 +89,6 @@
                                     <li class="nav-item">
                                         <a class="nav-link text-white-50" href="{{ url_for('cases') }}?status=resolved">
                                             <i class="fas fa-check"></i> Cleared Cases
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link text-white-50" href="{{ url_for('emails') }}">
-                                            <i class="fas fa-envelope"></i> Processed Emails
                                         </a>
                                     </li>
                                 </ul>
