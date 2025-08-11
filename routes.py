@@ -377,8 +377,44 @@ def reports():
         
         # Summary statistics
         total_emails = EmailRecord.query.count()
+        total_recipients = RecipientRecord.query.count()
         total_cases = Case.query.count()
         high_risk_cases = Case.query.filter(Case.severity.in_(['high', 'critical'])).count()
+        flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
+        
+        # Generate monthly reports based on actual data
+        monthly_reports = []
+        for i in range(3):  # Last 3 months
+            month_start = datetime.utcnow().replace(day=1) - timedelta(days=32*i)
+            month_start = month_start.replace(day=1)
+            month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            
+            emails_in_month = EmailRecord.query.filter(
+                EmailRecord.processed_at >= month_start,
+                EmailRecord.processed_at <= month_end
+            ).count()
+            
+            cases_in_month = Case.query.filter(
+                Case.created_at >= month_start,
+                Case.created_at <= month_end
+            ).count()
+            
+            if emails_in_month > 0 or cases_in_month > 0:
+                monthly_reports.append({
+                    'month_name': month_start.strftime('%B %Y'),
+                    'emails_processed': emails_in_month,
+                    'cases_generated': cases_in_month,
+                    'status': 'Ready' if emails_in_month > 0 else 'No Data'
+                })
+        
+        # Get top risk senders from actual data
+        top_risk_senders = db.session.query(
+            EmailRecord.sender,
+            func.avg(RecipientRecord.risk_score).label('avg_risk'),
+            func.count(RecipientRecord.id).label('recipient_count')
+        ).join(RecipientRecord).group_by(EmailRecord.sender).order_by(
+            func.avg(RecipientRecord.risk_score).desc()
+        ).limit(5).all()
         
         report_data = {
             'threat_trends': {
@@ -393,10 +429,20 @@ def reports():
                 'critical': risk_critical
             },
             'recent_activity': recent_activity,
+            'monthly_reports': monthly_reports,
+            'top_risk_senders': [
+                {
+                    'sender': sender[0],
+                    'avg_risk': round(float(sender[1]), 2),
+                    'recipient_count': sender[2]
+                } for sender in top_risk_senders
+            ],
             'summary': {
                 'total_emails': total_emails,
+                'total_recipients': total_recipients,
                 'total_cases': total_cases,
-                'high_risk_cases': high_risk_cases
+                'high_risk_cases': high_risk_cases,
+                'flagged_recipients': flagged_recipients
             }
         }
         

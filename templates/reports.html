@@ -56,27 +56,25 @@
                 <h5 class="mb-0"><i class="fas fa-calendar"></i> Monthly Reports</h5>
             </div>
             <div class="list-group list-group-flush">
-                <a href="#" class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">August 2025</h6>
-                        <small class="text-success">Ready</small>
+                {% if report_data.monthly_reports %}
+                    {% for month_report in report_data.monthly_reports %}
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ month_report.month_name }}</h6>
+                            <small class="text-success">{{ month_report.status }}</small>
+                        </div>
+                        <p class="mb-1">{{ month_report.emails_processed }} emails processed, {{ month_report.cases_generated }} cases generated.</p>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="list-group-item">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-calendar-times"></i><br>
+                            No monthly reports available yet.<br>
+                            <small>Reports will appear once you upload email data.</small>
+                        </div>
                     </div>
-                    <p class="mb-1">Monthly security summary and trends.</p>
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">July 2025</h6>
-                        <small class="text-success">Ready</small>
-                    </div>
-                    <p class="mb-1">Monthly security summary and trends.</p>
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">June 2025</h6>
-                        <small class="text-success">Ready</small>
-                    </div>
-                    <p class="mb-1">Monthly security summary and trends.</p>
-                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -144,7 +142,7 @@
         
         <!-- Summary Cards -->
         <div class="row mb-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card bg-primary text-white">
                     <div class="card-body">
                         <h5>{{ "{:,}".format(report_data.summary.total_emails) }}</h5>
@@ -152,7 +150,15 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5>{{ "{:,}".format(report_data.summary.total_recipients) }}</h5>
+                        <p class="mb-0">Total Recipients Analyzed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
                 <div class="card bg-warning text-white">
                     <div class="card-body">
                         <h5>{{ "{:,}".format(report_data.summary.total_cases) }}</h5>
@@ -160,16 +166,53 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card bg-danger text-white">
                     <div class="card-body">
-                        <h5>{{ "{:,}".format(report_data.summary.high_risk_cases) }}</h5>
-                        <p class="mb-0">High Risk Cases</p>
+                        <h5>{{ "{:,}".format(report_data.summary.flagged_recipients) }}</h5>
+                        <p class="mb-0">Flagged Recipients</p>
                     </div>
                 </div>
             </div>
         </div>
         
+        <!-- Top Risk Senders from Your Data -->
+        {% if report_data.top_risk_senders %}
+        <h6>Top Risk Senders (From Your Uploaded Data)</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Sender Email</th>
+                        <th>Average Risk Score</th>
+                        <th>Recipient Count</th>
+                        <th>Risk Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sender in report_data.top_risk_senders %}
+                    <tr>
+                        <td>{{ sender.sender }}</td>
+                        <td>{{ sender.avg_risk }}</td>
+                        <td>{{ "{:,}".format(sender.recipient_count) }}</td>
+                        <td>
+                            {% if sender.avg_risk >= 8.0 %}
+                                <span class="badge bg-danger">Critical</span>
+                            {% elif sender.avg_risk >= 5.0 %}
+                                <span class="badge bg-warning text-dark">High</span>
+                            {% elif sender.avg_risk >= 2.0 %}
+                                <span class="badge bg-info">Medium</span>
+                            {% else %}
+                                <span class="badge bg-success">Low</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
         <!-- Recent Report Activity -->
         <h6>Recent Analysis Reports</h6>
         <div class="table-responsive">
