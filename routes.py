@@ -147,6 +147,11 @@ def update_case(case_id):
     try:
         db.session.commit()
         flash('Case updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating case: {str(e)}', 'error')
+    
+    return redirect(url_for('case_detail', case_id=case_id))
 
 
 @app.route('/emails')
