@@ -700,6 +700,32 @@ def audit():
     logs = ProcessingLog.query.order_by(ProcessingLog.created_at.desc()).limit(100).all()
     return render_template('audit.html', logs=logs)
 
+@app.route('/debug/data-counts')
+def debug_data_counts():
+    """Debug endpoint to check actual data counts"""
+    email_count = EmailRecord.query.count()
+    recipient_count = RecipientRecord.query.count()
+    sender_count = SenderMetadata.query.count()
+    case_count = Case.query.count()
+    
+    # Get recent emails
+    recent_emails = EmailRecord.query.order_by(EmailRecord.created_at.desc()).limit(5).all()
+    
+    return jsonify({
+        'email_count': email_count,
+        'recipient_count': recipient_count,
+        'sender_count': sender_count,
+        'case_count': case_count,
+        'recent_emails': [
+            {
+                'id': e.id,
+                'sender': e.sender,
+                'subject': e.subject,
+                'created_at': e.created_at.isoformat() if e.created_at else None
+            } for e in recent_emails
+        ]
+    })
+
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""
@@ -773,7 +799,7 @@ def dashboard_data():
         func.case(
             [(SenderMetadata.leaver == 'yes', 'Leavers')],
             else_='Active'
-        ),
+        ).label('status'),
         func.count(SenderMetadata.id)
     ).group_by(
         func.case(
