@@ -8,7 +8,7 @@
 <div class="card shadow">
     <div class="card-header">
         <h5 class="mb-0"><i class="fas fa-envelope"></i> All Processed Emails</h5>
-        
+
         <!-- Filters -->
         <div class="row mt-3">
             <div class="col-md-2">
@@ -113,7 +113,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="table-responsive">
             <table class="table table-striped" id="emailsTable" style="width: 100%;">
                 <thead>
@@ -266,7 +266,7 @@
                                     {% set _ = all_risk_keywords.extend(recipient.matched_risk_keywords) %}
                                 {% endif %}
                             {% endfor %}
-                            
+
                             {% if all_risk_keywords %}
                                 {% set unique_keywords = all_risk_keywords|map(attribute='keyword')|unique|list %}
                                 {% for keyword in unique_keywords[:3] %}
@@ -301,28 +301,28 @@
                                 <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Email Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                
+
                                 <!-- Move to Flagged Events -->
                                 <form method="POST" action="{{ url_for('move_to_flagged', email_id=email.id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-outline-warning btn-sm" title="Move to Flagged Events" onclick="return confirm('Move this email to Flagged Events?')">
                                         <i class="fas fa-flag"></i>
                                     </button>
                                 </form>
-                                
+
                                 <!-- Move to Escalation -->
                                 <form method="POST" action="{{ url_for('move_to_escalation', email_id=email.id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-outline-danger btn-sm" title="Move to Escalation" onclick="return confirm('Escalate this email?')">
                                         <i class="fas fa-exclamation-triangle"></i>
                                     </button>
                                 </form>
-                                
+
                                 <!-- Move to Clear Cases -->
                                 <form method="POST" action="{{ url_for('move_to_cleared', email_id=email.id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-outline-success btn-sm" title="Move to Clear Cases" onclick="return confirm('Clear this case?')">
                                         <i class="fas fa-check-circle"></i>
                                     </button>
                                 </form>
-                                
+
                                 <!-- View Existing Cases -->
                                 {% if email.cases %}
                                     {% for case in email.cases %}
@@ -392,7 +392,7 @@
 $(document).ready(function() {
     const table = $('#emailsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 14, "desc" ]], // Sort by processed date (now column 14)
+        "order": [[ 15, "desc" ]], // Sort by processed date (now column 15)
         "scrollX": true,
         "autoWidth": false,
         "columnDefs": [
@@ -429,7 +429,7 @@ $(document).ready(function() {
                     const leaverFilter = $('#leaverFilter').val();
                     const statusFilter = $('#statusFilter').val();
                     const attachmentFilter = $('#attachmentFilter').val();
-                    
+
                     // Whitelist filter (column 12)
                     if (whitelistFilter) {
                         const whitelistText = data[12].toLowerCase();
@@ -440,7 +440,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Risk keyword filter (column 13)
                     if (riskKeywordFilter) {
                         const riskText = data[13].toLowerCase();
@@ -451,7 +451,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Severity filter (column 14)
                     if (severityFilter) {
                         const severityText = data[14].toLowerCase();
@@ -459,7 +459,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Risk level filter (column 10)
                     if (riskLevelFilter) {
                         const riskLevelText = data[10].toLowerCase();
@@ -467,7 +467,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Flagged filter (column 11)
                     if (flaggedFilter) {
                         const flaggedText = data[11].toLowerCase();
@@ -478,7 +478,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Leaver filter (column 6)
                     if (leaverFilter) {
                         const leaverText = data[6].toLowerCase();
@@ -489,7 +489,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Status filter (column 16)
                     if (statusFilter) {
                         const statusText = data[16].toLowerCase();
@@ -497,7 +497,7 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     // Attachment filter (column 5)
                     if (attachmentFilter) {
                         const attachmentText = data[5].toLowerCase();
@@ -508,38 +508,38 @@ $(document).ready(function() {
                             return false;
                         }
                     }
-                    
+
                     return true;
                 }
             );
         }
     });
-    
+
     // Filter event handlers
     $('#whitelistFilter, #riskKeywordFilter, #severityFilter, #riskLevelFilter, #flaggedFilter, #leaverFilter, #statusFilter, #attachmentFilter').on('change', function () {
         table.draw();
     });
-    
+
     // Clear filters
     $('#clearFilters').on('click', function () {
         $('#whitelistFilter, #riskKeywordFilter, #severityFilter, #riskLevelFilter, #flaggedFilter, #leaverFilter, #statusFilter, #attachmentFilter').val('');
         table.draw();
     });
-    
+
     // Bulk selection functionality
     $('#selectAll').on('change', function() {
         const isChecked = $(this).is(':checked');
         $('.email-checkbox:visible').prop('checked', isChecked);
         updateBulkActionsToolbar();
     });
-    
+
     $(document).on('change', '.email-checkbox', function() {
         updateBulkActionsToolbar();
-        
+
         // Update select all checkbox state
         const totalVisible = $('.email-checkbox:visible').length;
         const checkedVisible = $('.email-checkbox:visible:checked').length;
-        
+
         $('#selectAll').prop('indeterminate', checkedVisible > 0 && checkedVisible < totalVisible);
         $('#selectAll').prop('checked', checkedVisible === totalVisible && totalVisible > 0);
     });
@@ -548,7 +548,7 @@ $(document).ready(function() {
 function updateBulkActionsToolbar() {
     const selectedCount = $('.email-checkbox:checked').length;
     $('#selectedCount').text(selectedCount);
-    
+
     if (selectedCount > 0) {
         $('#bulkActionsToolbar').show();
     } else {
@@ -567,35 +567,35 @@ function bulkAction(action) {
     $('.email-checkbox:checked').each(function() {
         selectedEmails.push($(this).val());
     });
-    
+
     if (selectedEmails.length === 0) {
         alert('Please select at least one email.');
         return;
     }
-    
+
     const actionNames = {
         'flagged': 'Flagged Events',
         'escalated': 'Escalation',
         'cleared': 'Cleared Cases'
     };
-    
+
     const actionName = actionNames[action] || action;
-    
+
     if (!confirm(`Move ${selectedEmails.length} email(s) to ${actionName}?`)) {
         return;
     }
-    
+
     // Show loading state
     const buttons = $('#bulkActionsToolbar button');
     buttons.prop('disabled', true);
-    
+
     // Create form data
     const formData = new FormData();
     selectedEmails.forEach(emailId => {
         formData.append('email_ids', emailId);
     });
     formData.append('action', action);
-    
+
     // Submit bulk action
     fetch('/bulk-action', {
         method: 'POST',
@@ -606,7 +606,7 @@ function bulkAction(action) {
         if (data.success) {
             // Show success message
             showAlert(`Successfully moved ${data.count} email(s) to ${actionName}`, 'success');
-            
+
             // Reload page to reflect changes
             window.location.reload();
         } else {
