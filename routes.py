@@ -195,23 +195,59 @@ def rules_engine():
 
 @app.route('/rules-engine/add', methods=['POST'])
 def add_security_rule():
-    """Add new security rule"""
-    rule = SecurityRule(
-        name=request.form['name'],
-        description=request.form.get('description', ''),
-        rule_type=request.form['rule_type'],
-        pattern=request.form['pattern'],
-        action=request.form.get('action', 'flag'),
-        severity=request.form.get('severity', 'medium')
-    )
+    """Add new security rule with multiple conditions"""
+    import json
     
     try:
+        # Extract conditions from form data
+        conditions = []
+        form_data = request.form.to_dict()
+        
+        # Parse conditions from form
+        for key in form_data:
+            if key.startswith('conditions[') and key.endswith('][field]'):
+                index = key.split('[')[1].split(']')[0]
+                field_key = f'conditions[{index}][field]'
+                operator_key = f'conditions[{index}][operator]'
+                value_key = f'conditions[{index}][value]'
+                
+                if field_key in form_data and operator_key in form_data:
+                    condition = {
+                        'field': form_data[field_key],
+                        'operator': form_data[operator_key],
+                        'value': form_data.get(value_key, '')
+                    }
+                    conditions.append(condition)
+        
+        # Get logical operator
+        logical_operator = request.form.get('logical_operator', 'AND')
+        
+        # Create rule pattern as JSON for multiple conditions
+        rule_pattern = {
+            'conditions': conditions,
+            'logical_operator': logical_operator
+        }
+        
+        # For backward compatibility, set rule_type based on first condition
+        rule_type = conditions[0]['field'] if conditions else 'custom'
+        
+        rule = SecurityRule(
+            name=request.form['name'],
+            description=request.form.get('description', ''),
+            rule_type=rule_type,
+            pattern=json.dumps(rule_pattern),
+            action=request.form.get('action', 'flag'),
+            severity=request.form.get('severity', 'medium')
+        )
+        
         db.session.add(rule)
         db.session.commit()
         flash('Security rule added successfully', 'success')
+        
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding rule: {str(e)}', 'error')
+        logging.error(f"Error adding security rule: {str(e)}")
     
     return redirect(url_for('rules_engine'))
 
