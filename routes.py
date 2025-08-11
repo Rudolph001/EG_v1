@@ -251,6 +251,105 @@ def add_security_rule():
     
     return redirect(url_for('rules_engine'))
 
+@app.route('/rules-engine/edit/<int:rule_id>', methods=['GET', 'POST'])
+def edit_security_rule(rule_id):
+    """Edit existing security rule"""
+    rule = SecurityRule.query.get_or_404(rule_id)
+    
+    if request.method == 'POST':
+        import json
+        
+        try:
+            # Extract conditions from form data
+            conditions = []
+            form_data = request.form.to_dict()
+            
+            # Parse conditions from form
+            for key in form_data:
+                if key.startswith('conditions[') and key.endswith('][field]'):
+                    index = key.split('[')[1].split(']')[0]
+                    field_key = f'conditions[{index}][field]'
+                    operator_key = f'conditions[{index}][operator]'
+                    value_key = f'conditions[{index}][value]'
+                    
+                    if field_key in form_data and operator_key in form_data:
+                        condition = {
+                            'field': form_data[field_key],
+                            'operator': form_data[operator_key],
+                            'value': form_data.get(value_key, '')
+                        }
+                        conditions.append(condition)
+            
+            # Get logical operator
+            logical_operator = request.form.get('logical_operator', 'AND')
+            
+            # Create rule pattern as JSON for multiple conditions
+            rule_pattern = {
+                'conditions': conditions,
+                'logical_operator': logical_operator
+            }
+            
+            # Update rule
+            rule.name = request.form['name']
+            rule.description = request.form.get('description', '')
+            rule.rule_type = conditions[0]['field'] if conditions else rule.rule_type
+            rule.pattern = json.dumps(rule_pattern)
+            rule.action = request.form.get('action', 'flag')
+            rule.severity = request.form.get('severity', 'medium')
+            
+            db.session.commit()
+            flash('Security rule updated successfully', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating rule: {str(e)}', 'error')
+            logging.error(f"Error updating security rule: {str(e)}")
+        
+        return redirect(url_for('rules_engine'))
+    
+    # GET request - show edit form
+    import json
+    try:
+        rule_config = json.loads(rule.pattern)
+        conditions = rule_config.get('conditions', [])
+        logical_operator = rule_config.get('logical_operator', 'AND')
+    except (json.JSONDecodeError, TypeError):
+        # Legacy rule - convert to new format
+        conditions = [{
+            'field': rule.rule_type,
+            'operator': 'contains',
+            'value': rule.pattern
+        }]
+        logical_operator = 'AND'
+    
+    return jsonify({
+        'id': rule.id,
+        'name': rule.name,
+        'description': rule.description,
+        'action': rule.action,
+        'severity': rule.severity,
+        'conditions': conditions,
+        'logical_operator': logical_operator
+    })
+
+@app.route('/rules-engine/toggle/<int:rule_id>', methods=['POST'])
+def toggle_security_rule(rule_id):
+    """Toggle security rule active status"""
+    rule = SecurityRule.query.get_or_404(rule_id)
+    
+    try:
+        rule.active = not rule.active
+        db.session.commit()
+        
+        status = 'activated' if rule.active else 'deactivated'
+        flash(f'Security rule {status} successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error toggling rule: {str(e)}', 'error')
+    
+    return redirect(url_for('rules_engine'))
+
 @app.route('/whitelist-domains')
 def whitelist_domains():
     """Whitelist domains management"""

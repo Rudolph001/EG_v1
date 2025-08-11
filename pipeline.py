@@ -413,83 +413,98 @@ class EmailProcessingPipeline:
         return False
 
     def _match_rule_data(self, rule_data, recipient_record, email_record):
-        """Check if a rule data dict matches the given email/recipient"""
+        """Check if rule matches current email/recipient"""
         try:
             import json
+            import re
 
-            # Try to parse pattern as JSON (new multi-condition format)
+            pattern = rule_data['pattern']
+
+            # Check if pattern is JSON (new multi-condition rules)
             try:
-                rule_config = json.loads(rule_data['pattern'])
-                conditions = rule_config.get('conditions', [])
-                logical_operator = rule_config.get('logical_operator', 'AND')
-
-                if conditions:
-                    return self._evaluate_conditions(conditions, logical_operator, recipient_record, email_record)
-            except json.JSONDecodeError:
-                # Fall back to legacy single pattern matching
-                pass
-
-            # Legacy single pattern matching
-            pattern = rule_data['pattern'].lower()
-
-            if rule_data['rule_type'] == 'sender':
-                return pattern in email_record.sender.lower()
-            elif rule_data['rule_type'] == 'subject':
-                return pattern in (email_record.subject or '').lower()
-            elif rule_data['rule_type'] == 'attachment':
-                return pattern in (email_record.attachments or '').lower()
-            elif rule_data['rule_type'] == 'recipient':
-                return pattern in recipient_record.recipient.lower()
-            elif rule_data['rule_type'] == 'domain':
-                return pattern in (recipient_record.recipient_email_domain or '').lower()
+                rule_config = json.loads(pattern)
+                return self._match_complex_rule(rule_config, recipient_record, email_record)
+            except (json.JSONDecodeError, TypeError):
+                # Legacy simple pattern matching
+                rule_type = rule_data['rule_type']
+                return self._match_simple_rule(rule_type, pattern, recipient_record, email_record)
 
         except Exception as e:
-            self.logger.error(f"Error matching rule {rule_data['name']}: {str(e)}")
+            self.logger.error(f"Error matching rule: {str(e)}")
+            return False
 
-        return False
+    def _match_complex_rule(self, rule_config, recipient_record, email_record):
+        """Match complex multi-condition rules"""
+        conditions = rule_config.get('conditions', [])
+        logical_operator = rule_config.get('logical_operator', 'AND')
 
-    def _evaluate_conditions(self, conditions, logical_operator, recipient_record, email_record):
-        """Evaluate multiple conditions with logical operators"""
+        if not conditions:
+            return False
+
         results = []
-
         for condition in conditions:
             field = condition.get('field')
             operator = condition.get('operator')
-            value = condition.get('value', '').lower()
+            value = condition.get('value', '')
 
-            # Get field value
             field_value = self._get_field_value(field, recipient_record, email_record)
-
-            # Evaluate condition
-            result = self._evaluate_single_condition(field_value, operator, value)
-            results.append(result)
+            match_result = self._evaluate_condition(field_value, operator, value)
+            results.append(match_result)
 
         # Apply logical operator
         if logical_operator == 'OR':
             return any(results)
-        else:  # Default to AND
+        else:  # AND
             return all(results)
 
+    def _match_simple_rule(self, rule_type, pattern, recipient_record, email_record):
+        """Match legacy simple pattern rules"""
+        if rule_type == 'sender':
+            return self._match_pattern(pattern, email_record.sender)
+        elif rule_type == 'subject':
+            return self._match_pattern(pattern, email_record.subject or '')
+        elif rule_type == 'attachment':
+            return self._match_pattern(pattern, email_record.attachments or '')
+        elif rule_type == 'leaver':
+            return recipient_record.leaver == 'yes'
+        elif rule_type == 'termination':
+            return bool(recipient_record.termination)
+        elif rule_type == 'recipients':
+            return len(email_record.recipients) > 1
+
+        return False
+
     def _get_field_value(self, field, recipient_record, email_record):
-        """Get value for a specific field"""
-        field_map = {
-            'sender': email_record.sender or '',
-            'subject': email_record.subject or '',
-            'attachments': email_record.attachments or '',
-            'recipients': recipient_record.recipient or '',
-            'leaver': recipient_record.leaver or '',
-            'termination': recipient_record.termination or '',
-            'account_type': recipient_record.account_type or '',
-            'bunit': recipient_record.bunit or '',
-            'department': recipient_record.department or '',
-            'timestamp': str(email_record.timestamp) if email_record.timestamp else ''
-        }
+        """Get field value for condition evaluation"""
+        if field == 'sender':
+            return email_record.sender or ''
+        elif field == 'subject':
+            return email_record.subject or ''
+        elif field == 'attachments':
+            return email_record.attachments or ''
+        elif field == 'recipients':
+            return str(len(email_record.recipients))
+        elif field == 'leaver':
+            return recipient_record.leaver or ''
+        elif field == 'termination':
+            return recipient_record.termination or ''
+        elif field == 'account_type':
+            return recipient_record.account_type or ''
+        elif field == 'bunit':
+            return recipient_record.bunit or ''
+        elif field == 'department':
+            return recipient_record.department or ''
+        elif field == 'timestamp':
+            return email_record.timestamp.isoformat() if email_record.timestamp else ''
 
-        return field_map.get(field, '').lower()
+        return ''
 
-    def _evaluate_single_condition(self, field_value, operator, value):
+    def _evaluate_condition(self, field_value, operator, value):
         """Evaluate a single condition"""
         import re
+
+        field_value = str(field_value).lower()
+        value = str(value).lower()
 
         if operator == 'contains':
             return value in field_value
@@ -501,7 +516,7 @@ class EmailProcessingPipeline:
             return field_value.endswith(value)
         elif operator == 'regex':
             try:
-                return bool(re.search(value, field_value))
+                return bool(re.search(value, field_value, re.IGNORECASE))
             except re.error:
                 return False
         elif operator == 'not_contains':

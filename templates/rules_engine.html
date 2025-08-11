@@ -204,6 +204,81 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Rule Modal -->
+<div class="modal fade" id="editRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Security Rule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editRuleForm">
+                    <input type="hidden" id="editRuleId">
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Rule Name *</label>
+                        <input type="text" class="form-control" id="editName" name="name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Conditions</label>
+                        <div id="editConditionsContainer">
+                            <!-- Conditions will be loaded here -->
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addEditCondition">
+                                <i class="fas fa-plus"></i> Add Condition
+                            </button>
+                            <div id="editLogicalOperatorSelector" style="display: none;">
+                                <label class="form-label me-2">Between conditions:</label>
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="edit_logical_operator" id="edit_and_operator" value="AND">
+                                    <label class="btn btn-outline-primary btn-sm" for="edit_and_operator">AND</label>
+                                    <input type="radio" class="btn-check" name="edit_logical_operator" id="edit_or_operator" value="OR">
+                                    <label class="btn btn-outline-primary btn-sm" for="edit_or_operator">OR</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAction" class="form-label">Action</label>
+                                <select class="form-select" id="editAction" name="action">
+                                    <option value="flag">Flag for Review</option>
+                                    <option value="block">Block</option>
+                                    <option value="quarantine">Quarantine</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editSeverity" class="form-label">Severity</label>
+                                <select class="form-select" id="editSeverity" name="severity">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEditRule">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -275,14 +350,14 @@ $(document).ready(function() {
         if ($('.condition-group').length > 1) {
             $('#logicalOperatorSelector').show();
         }
-        
+
         conditionIndex++;
     });
 
     // Remove condition
     $('#conditionsContainer').on('click', '.remove-condition', function() {
         $(this).closest('.condition-group').remove();
-        
+
         // Hide logical operator selector if only one condition remains
         if ($('.condition-group').length <= 1) {
             $('#logicalOperatorSelector').hide();
@@ -315,16 +390,233 @@ $(document).ready(function() {
             valueInput.show();
         }
     });
+
+    // Add event handlers for edit modal
+    $('#addEditCondition').on('click', function() {
+        addEditCondition();
+
+        // Show logical operator selector if more than one condition
+        if ($('#editConditionsContainer .condition-group').length > 1) {
+            $('#editLogicalOperatorSelector').show();
+        }
+    });
+
+    // Remove edit condition
+    $('#editConditionsContainer').on('click', '.remove-edit-condition', function() {
+        $(this).closest('.condition-group').remove();
+
+        // Hide logical operator selector if only one condition remains
+        if ($('#editConditionsContainer .condition-group').length <= 1) {
+            $('#editLogicalOperatorSelector').hide();
+        }
+    });
+
+    // Handle edit operator change
+    $('#editConditionsContainer').on('change', '.condition-operator', function() {
+        const operator = $(this).val();
+        const valueInput = $(this).closest('.row').find('.condition-value');
+        if (operator === 'is_empty' || operator === 'is_not_empty') {
+            valueInput.hide();
+        } else {
+            valueInput.show();
+        }
+    });
 });
 
+// Function to add a condition to the edit modal
+function addEditCondition() {
+    let editConditionIndex = $('#editConditionsContainer .condition-group').length;
+    const editConditionsContainer = $('#editConditionsContainer');
+    const newConditionHtml = `
+        <div class="condition-group border rounded p-3 mb-3" data-condition-index="${editConditionIndex}">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Field</label>
+                    <select class="form-select condition-field" name="edit_conditions[${editConditionIndex}][field]" required>
+                        <option value="sender">Sender</option>
+                        <option value="subject">Subject</option>
+                        <option value="attachments">Attachments</option>
+                        <option value="recipients">Recipients</option>
+                        <option value="leaver">Leaver Status</option>
+                        <option value="termination">Termination</option>
+                        <option value="account_type">Account Type</option>
+                        <option value="bunit">Business Unit</option>
+                        <option value="department">Department</option>
+                        <option value="timestamp">Timestamp</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Operator</label>
+                    <select class="form-select condition-operator" name="edit_conditions[${editConditionIndex}][operator]" required>
+                        <option value="contains">Contains</option>
+                        <option value="equals">Equals</option>
+                        <option value="starts_with">Starts With</option>
+                        <option value="ends_with">Ends With</option>
+                        <option value="regex">Regex Match</option>
+                        <option value="not_contains">NOT Contains</option>
+                        <option value="not_equals">NOT Equals</option>
+                        <option value="is_empty">Is Empty</option>
+                        <option value="is_not_empty">Is Not Empty</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Value</label>
+                    <input type="text" class="form-control condition-value" 
+                           name="edit_conditions[${editConditionIndex}][value]" 
+                           placeholder="Enter value to match">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger btn-sm d-block remove-edit-condition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    editConditionsContainer.append(newConditionHtml);
+}
+
 function editRule(ruleId) {
-    // TODO: Implement edit functionality
-    alert('Edit functionality coming soon!');
+    // Fetch rule data (assuming you have an endpoint like /api/rules/<ruleId>)
+    fetch(`/api/rules/${ruleId}`)
+        .then(response => response.json())
+        .then(rule => {
+            $('#editRuleId').val(rule.id);
+            $('#editName').val(rule.name);
+            $('#editDescription').val(rule.description);
+            $('#editAction').val(rule.action);
+            $('#editSeverity').val(rule.severity);
+
+            const editConditionsContainer = $('#editConditionsContainer');
+            editConditionsContainer.empty(); // Clear existing conditions
+
+            if (rule.conditions && rule.conditions.length > 0) {
+                $('#editLogicalOperatorSelector').show();
+                if (rule.logical_operator) {
+                    $(`input[name="edit_logical_operator"][value="${rule.logical_operator}"]`).prop('checked', true);
+                } else {
+                    $('#edit_and_operator').prop('checked', true); // Default to AND
+                }
+
+                rule.conditions.forEach((condition, index) => {
+                    const conditionHtml = `
+                        <div class="condition-group border rounded p-3 mb-3" data-condition-index="${index}">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Field</label>
+                                    <select class="form-select condition-field" name="edit_conditions[${index}][field]" required>
+                                        <option value="sender" ${condition.field === 'sender' ? 'selected' : ''}>Sender</option>
+                                        <option value="subject" ${condition.field === 'subject' ? 'selected' : ''}>Subject</option>
+                                        <option value="attachments" ${condition.field === 'attachments' ? 'selected' : ''}>Attachments</option>
+                                        <option value="recipients" ${condition.field === 'recipients' ? 'selected' : ''}>Recipients</option>
+                                        <option value="leaver" ${condition.field === 'leaver' ? 'selected' : ''}>Leaver Status</option>
+                                        <option value="termination" ${condition.field === 'termination' ? 'selected' : ''}>Termination</option>
+                                        <option value="account_type" ${condition.field === 'account_type' ? 'selected' : ''}>Account Type</option>
+                                        <option value="bunit" ${condition.field === 'bunit' ? 'selected' : ''}>Business Unit</option>
+                                        <option value="department" ${condition.field === 'department' ? 'selected' : ''}>Department</option>
+                                        <option value="timestamp" ${condition.field === 'timestamp' ? 'selected' : ''}>Timestamp</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Operator</label>
+                                    <select class="form-select condition-operator" name="edit_conditions[${index}][operator]" required>
+                                        <option value="contains" ${condition.operator === 'contains' ? 'selected' : ''}>Contains</option>
+                                        <option value="equals" ${condition.operator === 'equals' ? 'selected' : ''}>Equals</option>
+                                        <option value="starts_with" ${condition.operator === 'starts_with' ? 'selected' : ''}>Starts With</option>
+                                        <option value="ends_with" ${condition.operator === 'ends_with' ? 'selected' : ''}>Ends With</option>
+                                        <option value="regex" ${condition.operator === 'regex' ? 'selected' : ''}>Regex Match</option>
+                                        <option value="not_contains" ${condition.operator === 'not_contains' ? 'selected' : ''}>NOT Contains</option>
+                                        <option value="not_equals" ${condition.operator === 'not_equals' ? 'selected' : ''}>NOT Equals</option>
+                                        <option value="is_empty" ${condition.operator === 'is_empty' ? 'selected' : ''}>Is Empty</option>
+                                        <option value="is_not_empty" ${condition.operator === 'is_not_empty' ? 'selected' : ''}>Is Not Empty</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Value</label>
+                                    <input type="text" class="form-control condition-value" 
+                                           name="edit_conditions[${index}][value]" 
+                                           value="${condition.value || ''}"
+                                           placeholder="Enter value to match">
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-danger btn-sm d-block remove-edit-condition">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    editConditionsContainer.append(conditionHtml);
+
+                    // Handle initial visibility of value input for edit conditions
+                    const valueInput = $(editConditionsContainer.find(`.condition-group[data-condition-index="${index}"]`).find('.condition-value'));
+                    if (condition.operator === 'is_empty' || condition.operator === 'is_not_empty') {
+                        valueInput.hide();
+                    } else {
+                        valueInput.show();
+                    }
+                });
+            } else {
+                $('#editLogicalOperatorSelector').hide();
+            }
+
+            $('#editRuleModal').modal('show');
+        })
+        .catch(error => {
+            console.error('Error fetching rule:', error);
+            alert('Failed to load rule for editing.');
+        });
 }
 
 function toggleRule(ruleId) {
     // TODO: Implement toggle functionality
     alert('Toggle functionality coming soon!');
 }
+
+// Save edit changes handler
+$('#saveEditRule').on('click', function() {
+    const ruleId = $('#editRuleId').val();
+    const formData = {
+        name: $('#editName').val(),
+        description: $('#editDescription').val(),
+        action: $('#editAction').val(),
+        severity: $('#editSeverity').val(),
+        conditions: [],
+        logical_operator: $('input[name="edit_logical_operator"]:checked').val()
+    };
+
+    $('#editConditionsContainer .condition-group').each(function() {
+        const condition = {
+            field: $(this).find('.condition-field').val(),
+            operator: $(this).find('.condition-operator').val(),
+            value: $(this).find('.condition-value').val()
+        };
+        formData.conditions.push(condition);
+    });
+
+    fetch(`/api/rules/${ruleId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+    })
+    .then(response => {
+        if (response.ok) {
+            $('#editRuleModal').modal('hide');
+            // Optionally refresh the table or show a success message
+            location.reload(); 
+        } else {
+            alert('Failed to save changes.');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving rule:', error);
+        alert('An error occurred while saving.');
+    });
+});
+
 </script>
 {% endblock %}
