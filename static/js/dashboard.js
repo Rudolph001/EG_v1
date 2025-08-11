@@ -274,10 +274,10 @@ class EmailGuardianDashboard {
             this.charts.dailyProcessing.update();
         }
 
-        // Update severity distribution chart
-        if (this.charts.severity && data.severity_distribution) {
-            this.charts.severity.data.labels = data.severity_distribution.labels;
-            this.charts.severity.data.datasets[0].data = data.severity_distribution.data;
+        // Update severity distribution chart - use risk_distribution data
+        if (this.charts.severity && data.risk_distribution) {
+            this.charts.severity.data.labels = data.risk_distribution.labels;
+            this.charts.severity.data.datasets[0].data = data.risk_distribution.data;
             this.charts.severity.update();
         }
 
