@@ -21,6 +21,7 @@ def dashboard():
     """Main dashboard with analytics"""
     # Get recent statistics
     total_emails = EmailRecord.query.count()
+    total_recipients = RecipientRecord.query.count()
     total_cases = Case.query.count()
     open_cases = Case.query.filter_by(status='open').count()
     flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
@@ -35,16 +36,24 @@ def dashboard():
     # Calculate daily processing counts
     daily_counts = {}
     for email in recent_emails:
-        date = email.processed_at.strftime('%Y-%m-%d')
-        daily_counts[date] = daily_counts.get(date, 0) + 1
+        if email.processed_at:
+            date = email.processed_at.strftime('%Y-%m-%d')
+            daily_counts[date] = daily_counts.get(date, 0) + 1
+    
+    # Get average risk scores
+    avg_security_score = db.session.query(func.avg(RecipientRecord.security_score)).scalar() or 0
+    avg_ml_score = db.session.query(func.avg(RecipientRecord.ml_score)).scalar() or 0
     
     stats = {
         'total_emails': total_emails,
+        'total_recipients': total_recipients,
         'total_cases': total_cases,
         'open_cases': open_cases,
         'flagged_recipients': flagged_recipients,
         'recent_cases': recent_cases,
-        'daily_counts': daily_counts
+        'daily_counts': daily_counts,
+        'avg_security_score': round(avg_security_score, 2),
+        'avg_ml_score': round(avg_ml_score, 2)
     }
     
     return render_template('dashboard.html', stats=stats)
@@ -266,27 +275,47 @@ def dashboard_data():
     """API endpoint for dashboard charts data"""
     # Get case distribution by severity
     severity_counts = db.session.query(
-        Case.severity, db.func.count(Case.id)
+        Case.severity, func.count(Case.id)
     ).group_by(Case.severity).all()
     
     # Get processing statistics for the last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     daily_stats = db.session.query(
-        db.func.date(EmailRecord.processed_at),
-        db.func.count(EmailRecord.id)
+        func.date(EmailRecord.processed_at),
+        func.count(EmailRecord.id)
     ).filter(EmailRecord.processed_at >= seven_days_ago).group_by(
-        db.func.date(EmailRecord.processed_at)
+        func.date(EmailRecord.processed_at)
     ).all()
     
-    return jsonify({
-        'severity_distribution': {
-            'labels': [s[0] for s in severity_counts],
-            'data': [s[1] for s in severity_counts]
-        },
-        'daily_processing': {
+    # If no severity data, provide default structure
+    if not severity_counts:
+        severity_data = {
+            'labels': ['Low', 'Medium', 'High', 'Critical'],
+            'data': [0, 0, 0, 0]
+        }
+    else:
+        severity_labels = [s[0] for s in severity_counts]
+        severity_values = [s[1] for s in severity_counts]
+        severity_data = {
+            'labels': severity_labels,
+            'data': severity_values
+        }
+    
+    # If no daily stats, provide last 7 days with zeros
+    if not daily_stats:
+        daily_data = {
+            'labels': [(datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(6, -1, -1)],
+            'data': [0] * 7
+        }
+    else:
+        daily_data = {
             'labels': [str(d[0]) for d in daily_stats],
             'data': [d[1] for d in daily_stats]
         }
+    
+    return jsonify({
+        'severity_distribution': severity_data,
+        'daily_processing': daily_data
     })
 
 # Error handlers
