@@ -18,8 +18,6 @@
                     <tr>
                         <th>Recipient ID</th>
                         <th>Email</th>
-                        <th>Department</th>
-                        <th>Status</th>
                         <th>Security Score</th>
                         <th>ML Score</th>
                         <th>Risk Score</th>
@@ -32,12 +30,6 @@
                     <tr>
                         <td><code>RCP-{{ recipient.id }}</code></td>
                         <td>{{ recipient.recipient }}</td>
-                        <td>{{ recipient.recipient_department or 'N/A' }}</td>
-                        <td>
-                            <span class="badge bg-{{ 'danger' if recipient.leaver == 'yes' else 'success' }}">
-                                {{ 'Leaver' if recipient.leaver == 'yes' else 'Active' }}
-                            </span>
-                        </td>
                         <td>
                             <span class="badge bg-{{ 'danger' if recipient.security_score > 5 else 'warning' if recipient.security_score > 3 else 'success' }}">
                                 {{ "%.1f"|format(recipient.security_score) }}
@@ -120,9 +112,9 @@
 $(document).ready(function() {
     $('#recipientsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 8, "desc" ]], // Sort by created date
+        "order": [[ 6, "desc" ]], // Sort by created date
         "columnDefs": [
-            { "orderable": false, "targets": [7] } // Disable sorting on flagged column
+            { "orderable": false, "targets": [5] } // Disable sorting on flagged column
         ]
     });
 });
