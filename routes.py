@@ -1652,44 +1652,90 @@ def bulk_action():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/dashboard-data')
+@app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""
-    # Get case distribution by severity with proper ordering
-    severity_order = ['low', 'medium', 'high', 'critical']
-    severity_counts = db.session.query(
-        Case.severity, func.count(Case.id)
-    ).group_by(Case.severity).all()
+    try:
+        # Get case distribution by severity with proper ordering
+        severity_order = ['low', 'medium', 'high', 'critical']
+        severity_counts = db.session.query(
+            Case.severity, func.count(Case.id)
+        ).group_by(Case.severity).all()
 
-    # Create severity data with all categories
-    severity_dict = {s[0]: s[1] for s in severity_counts}
-    severity_data = {
-        'labels': ['Low', 'Medium', 'High', 'Critical'],
-        'data': [severity_dict.get(level, 0) for level in severity_order]
-    }
+        # Create severity data with all categories
+        severity_dict = {s[0]: s[1] for s in severity_counts}
+        severity_data = {
+            'labels': ['Low', 'Medium', 'High', 'Critical'],
+            'data': [severity_dict.get(level, 0) for level in severity_order]
+        }
 
-    # Get processing statistics for the last 7 days
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    daily_stats = db.session.query(
-        func.date(EmailRecord.processed_at),
-        func.count(EmailRecord.id)
-    ).filter(EmailRecord.processed_at >= seven_days_ago).group_by(
-        func.date(EmailRecord.processed_at)
-    ).order_by(func.date(EmailRecord.processed_at)).all()
+        # Get processing statistics for the last 7 days
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        daily_stats = db.session.query(
+            func.date(EmailRecord.processed_at),
+            func.count(EmailRecord.id)
+        ).filter(EmailRecord.processed_at >= seven_days_ago).group_by(
+            func.date(EmailRecord.processed_at)
+        ).order_by(func.date(EmailRecord.processed_at)).all()
 
-    # Create complete 7-day dataset
-    date_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_stats}
-    daily_labels = []
-    daily_values = []
+        # Create complete 7-day dataset
+        date_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_stats}
+        daily_labels = []
+        daily_values = []
 
-    for i in range(6, -1, -1):
-        date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
-        daily_labels.append(date)
-        daily_values.append(date_dict.get(date, 0))
+        for i in range(6, -1, -1):
+            date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+            daily_labels.append(date)
+            daily_values.append(date_dict.get(date, 0))
 
-    daily_data = {
-        'labels': daily_labels,
-        'data': daily_values
-    }
+        daily_data = {
+            'labels': daily_labels,
+            'data': daily_values
+        }
+
+        # Get sender domain stats
+        sender_domains = db.session.query(
+            SenderMetadata.email_domain,
+            func.count(SenderMetadata.id)
+        ).group_by(SenderMetadata.email_domain).order_by(
+            func.count(SenderMetadata.id).desc()
+        ).limit(10).all()
+
+        sender_domains_data = {
+            'labels': [d[0] or 'Unknown' for d in sender_domains],
+            'data': [d[1] for d in sender_domains]
+        }
+
+        # Get sender status data
+        status_counts = db.session.query(
+            func.case([(SenderMetadata.leaver != '', 'Leavers')], else_='Active'),
+            func.count(SenderMetadata.id)
+        ).group_by(
+            func.case([(SenderMetadata.leaver != '', 'Leavers')], else_='Active')
+        ).all()
+
+        sender_status_data = {
+            'labels': [s[0] for s in status_counts],
+            'data': [s[1] for s in status_counts]
+        }
+
+        return jsonify({
+            'severity_distribution': severity_data,
+            'daily_processing': daily_data,
+            'daily_cases': daily_data,  # Using same data for now
+            'sender_domains': sender_domains_data,
+            'sender_status': sender_status_data
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error in dashboard_data: {str(e)}")
+        return jsonify({
+            'error': 'Failed to load dashboard data',
+            'severity_distribution': {'labels': ['Low', 'Medium', 'High', 'Critical'], 'data': [0, 0, 0, 0]},
+            'daily_processing': {'labels': [], 'data': []},
+            'sender_domains': {'labels': [], 'data': []},
+            'sender_status': {'labels': ['Active', 'Leavers'], 'data': [0, 0]}
+        })
 
     # Get case counts for the same period
     daily_case_stats = db.session.query(

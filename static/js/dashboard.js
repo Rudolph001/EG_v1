@@ -28,13 +28,32 @@ class EmailGuardianDashboard {
     async loadDashboardData() {
         try {
             const response = await fetch('/api/dashboard-data');
-            if (!response.ok) throw new Error('Failed to fetch dashboard data');
+            if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch dashboard data`);
             
             const data = await response.json();
+            
+            // Check if we received an error response
+            if (data.error) {
+                console.error('Server error:', data.error);
+                this.showError(data.error);
+                // Still try to update charts with fallback data
+                this.updateCharts(data);
+                return;
+            }
+            
             this.updateCharts(data);
         } catch (error) {
             console.error('Error loading dashboard data:', error);
-            this.showError('Failed to load dashboard data');
+            this.showError('Failed to load dashboard data. Please refresh the page.');
+            
+            // Load charts with empty data to prevent rendering issues
+            const fallbackData = {
+                severity_distribution: {labels: ['Low', 'Medium', 'High', 'Critical'], data: [0, 0, 0, 0]},
+                daily_processing: {labels: [], data: []},
+                sender_domains: {labels: [], data: []},
+                sender_status: {labels: ['Active', 'Leavers'], data: [0, 0]}
+            };
+            this.updateCharts(fallbackData);
         }
     }
 

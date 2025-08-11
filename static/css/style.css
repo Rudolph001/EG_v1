@@ -71,6 +71,7 @@ main {
     border-radius: 0.5rem;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transition: box-shadow 0.15s ease-in-out;
+    overflow: hidden;
 }
 
 .card:hover {
@@ -81,6 +82,39 @@ main {
     background-color: white;
     border-bottom: 1px solid #e3e6f0;
     padding: 1rem 1.25rem;
+}
+
+.card-header h6 {
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-body {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.card-body .row.no-gutters {
+    align-items: center;
+    min-height: 60px;
+}
+
+.card-body .col {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.card-body .text-xs {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-body .h5 {
+    margin-bottom: 0;
+    line-height: 1.2;
 }
 
 /* Statistics Cards */
@@ -253,10 +287,48 @@ main {
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .card-header h6 {
+        font-size: 0.9rem;
+    }
+    
+    .card-body h5 {
+        font-size: 1rem;
+    }
+    
+    .text-xs {
+        font-size: 0.7rem !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .sidebar {
+        width: 250px;
+    }
+    
+    main {
+        margin-left: 250px;
+    }
+    
+    .card-body h5 {
+        font-size: 0.9rem;
+    }
+    
+    .h5 {
+        font-size: 1rem !important;
+    }
+    
+    .card-title {
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
+        width: var(--sidebar-width);
     }
     
     .sidebar.show {
@@ -275,6 +347,71 @@ main {
     .btn-group .btn {
         padding: 0.25rem 0.5rem;
         font-size: 0.8rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .h5, .card-body h2 {
+        font-size: 0.9rem !important;
+        line-height: 1.2;
+    }
+    
+    .text-xs {
+        font-size: 0.65rem !important;
+    }
+    
+    .card-title {
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-xl-3, .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 0.5rem;
+    }
+    
+    .h5, .card-body h2, .card-body h5 {
+        font-size: 0.8rem !important;
+        line-height: 1.1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .text-xs {
+        font-size: 0.6rem !important;
+        line-height: 1;
+    }
+    
+    .card-title {
+        font-size: 0.7rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    .fa-2x {
+        font-size: 1.5em !important;
+    }
+    
+    .row.no-gutters .col {
+        padding: 0 0.25rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 0.25rem;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.4rem;
     }
 }
 
