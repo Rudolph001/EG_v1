@@ -474,7 +474,12 @@ class EmailProcessingPipeline:
             if sender_metadata:
                 leaver_value = (sender_metadata.leaver or '').lower().strip()
                 pattern_value = pattern.lower().strip()
-                return pattern_value in leaver_value or (pattern_value == 'yes' and leaver_value == 'yes')
+                if pattern_value == 'yes':
+                    return leaver_value == 'yes'
+                elif pattern_value == 'no':
+                    return leaver_value != 'yes' and leaver_value != ''
+                else:
+                    return pattern_value in leaver_value
             return False
         elif rule_type == 'termination':
             termination_value = (recipient_record.termination or '').lower().strip()
@@ -496,8 +501,16 @@ class EmailProcessingPipeline:
         elif field == 'recipients':
             return str(len(email_record.recipients))
         elif field == 'leaver':
+            # Check sender metadata for leaver status
+            sender_metadata = self._get_sender_metadata(email_record.sender)
+            if sender_metadata:
+                return sender_metadata.leaver or ''
             return recipient_record.leaver or ''
         elif field == 'termination':
+            # Check sender metadata for termination status  
+            sender_metadata = self._get_sender_metadata(email_record.sender)
+            if sender_metadata:
+                return sender_metadata.termination or ''
             return recipient_record.termination or ''
         elif field == 'account_type':
             return recipient_record.account_type or ''

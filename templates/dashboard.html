@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Email Guardian{% endblock %}
@@ -17,7 +18,7 @@
 
 {% block content %}
 <div class="row mb-4">
-    <!-- Statistics Cards -->
+    <!-- Email Statistics Cards -->
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-left-primary shadow h-100 py-2">
             <div class="card-body">
@@ -59,6 +60,26 @@
     </div>
 
     <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Senders
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ "{:,}".format(stats.total_senders) }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-tie fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-left-warning shadow h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
@@ -77,7 +98,10 @@
             </div>
         </div>
     </div>
+</div>
 
+<!-- Second Row of Cards -->
+<div class="row mb-4">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-left-danger shadow h-100 py-2">
             <div class="card-body">
@@ -99,19 +123,59 @@
     </div>
 
     <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-dark shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
+                            Leaver Senders
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.leaver_senders }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-times fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                            Sender Domains
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.sender_domains }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-globe fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-left-success shadow h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Total Cases
+                            Avg Risk Score
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            {{ stats.total_cases }}
+                            {{ stats.avg_risk_score }}
                         </div>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>
@@ -150,6 +214,126 @@
     </div>
 </div>
 
+<!-- Sender Analytics Row -->
+<div class="row mb-4">
+    <!-- Sender Domain Distribution -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top Sender Domains</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="senderDomainsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sender Status Distribution -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sender Status Distribution</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="senderStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Risk Analysis Row -->
+<div class="row mb-4">
+    <!-- Top Risk Senders -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top Risk Senders</h6>
+            </div>
+            <div class="card-body">
+                {% if stats.top_risk_senders %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Sender</th>
+                                <th>Avg Risk Score</th>
+                                <th>Email Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sender in stats.top_risk_senders %}
+                            <tr>
+                                <td>{{ sender[0] }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if sender[1] > 5 else 'warning' if sender[1] > 3 else 'success' }}">
+                                        {{ "%.1f"|format(sender[1]) }}
+                                    </span>
+                                </td>
+                                <td>{{ sender[2] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-info-circle text-muted"></i>
+                    <span class="text-muted">No risk data available</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Active Senders -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Most Active Senders</h6>
+            </div>
+            <div class="card-body">
+                {% if stats.top_active_senders %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Sender</th>
+                                <th>Email Count</th>
+                                <th>Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sender in stats.top_active_senders %}
+                            <tr>
+                                <td>{{ sender[0] }}</td>
+                                <td>{{ sender[1] }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ (sender[1] / stats.top_active_senders[0][1] * 100) if stats.top_active_senders else 0 }}%">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-info-circle text-muted"></i>
+                    <span class="text-muted">No sender activity data available</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Security Cases -->
 <div class="card shadow mb-4">
     <div class="card-header py-3">
@@ -177,7 +361,7 @@
                                 #{{ case.id }}
                             </a>
                         </td>
-                        <td>{{ case.case_type|title }}</td>
+                        <td>{{ case.case_type.replace('_', ' ')|title }}</td>
                         <td>
                             {% if case.severity == 'critical' %}
                                 <span class="badge bg-danger">Critical</span>

@@ -41,7 +41,8 @@ class EmailGuardianDashboard {
     initializeCharts() {
         this.initializeDailyProcessingChart();
         this.initializeSeverityChart();
-        this.initializeThreatTrendsChart();
+        this.initializeSenderDomainsChart();
+        this.initializeSenderStatusChart();
     }
 
     initializeDailyProcessingChart() {
@@ -139,30 +140,40 @@ class EmailGuardianDashboard {
         });
     }
 
-    initializeThreatTrendsChart() {
-        const ctx = document.getElementById('threatTrendsChart');
+    initializeSenderDomainsChart() {
+        const ctx = document.getElementById('senderDomainsChart');
         if (!ctx) return;
 
-        this.charts.threatTrends = new Chart(ctx, {
+        this.charts.senderDomains = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Phishing', 'Malware', 'Spam', 'Social Engineering', 'Data Exfiltration'],
+                labels: [],
                 datasets: [{
-                    label: 'Detected Threats',
-                    data: [12, 8, 15, 6, 3],
+                    label: 'Sender Count',
+                    data: [],
                     backgroundColor: [
-                        'rgba(255, 99, 132, 0.8)',
                         'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 99, 132, 0.8)',
                         'rgba(255, 206, 86, 0.8)',
                         'rgba(75, 192, 192, 0.8)',
-                        'rgba(153, 102, 255, 0.8)'
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(255, 159, 64, 0.8)',
+                        'rgba(199, 199, 199, 0.8)',
+                        'rgba(83, 102, 255, 0.8)',
+                        'rgba(255, 99, 255, 0.8)',
+                        'rgba(54, 255, 162, 0.8)'
                     ],
                     borderColor: [
-                        'rgba(255, 99, 132, 1)',
                         'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
                         'rgba(255, 206, 86, 1)',
                         'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)'
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)',
+                        'rgba(255, 99, 255, 1)',
+                        'rgba(54, 255, 162, 1)'
                     ],
                     borderWidth: 1
                 }]
@@ -173,12 +184,57 @@ class EmailGuardianDashboard {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Threat Type Distribution'
+                        text: 'Top Sender Domains'
+                    },
+                    legend: {
+                        display: false
                     }
                 },
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    initializeSenderStatusChart() {
+        const ctx = document.getElementById('senderStatusChart');
+        if (!ctx) return;
+
+        this.charts.senderStatus = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Leavers'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: [
+                        '#28a745',
+                        '#dc3545'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Sender Status Distribution'
+                    },
+                    legend: {
+                        position: 'bottom'
                     }
                 }
             }
@@ -204,6 +260,20 @@ class EmailGuardianDashboard {
             this.charts.severity.data.labels = data.severity_distribution.labels;
             this.charts.severity.data.datasets[0].data = data.severity_distribution.data;
             this.charts.severity.update();
+        }
+
+        // Update sender domains chart
+        if (this.charts.senderDomains && data.sender_domains) {
+            this.charts.senderDomains.data.labels = data.sender_domains.labels;
+            this.charts.senderDomains.data.datasets[0].data = data.sender_domains.data;
+            this.charts.senderDomains.update();
+        }
+
+        // Update sender status chart
+        if (this.charts.senderStatus && data.sender_status) {
+            this.charts.senderStatus.data.labels = data.sender_status.labels;
+            this.charts.senderStatus.data.datasets[0].data = data.sender_status.data;
+            this.charts.senderStatus.update();
         }
     }
 

@@ -27,23 +27,40 @@ def dashboard():
     open_cases = Case.query.filter_by(status='open').count()
     flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
     
+    # Get sender statistics
+    total_senders = SenderMetadata.query.count()
+    leaver_senders = SenderMetadata.query.filter_by(leaver='yes').count()
+    
+    # Get unique sender domains
+    sender_domains = db.session.query(func.count(func.distinct(SenderMetadata.email_domain))).scalar() or 0
+    
     # Get recent cases
     recent_cases = Case.query.order_by(Case.created_at.desc()).limit(5).all()
     
-    # Get processing statistics for the last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    recent_emails = EmailRecord.query.filter(EmailRecord.processed_at >= thirty_days_ago).all()
-    
-    # Calculate daily processing counts
-    daily_counts = {}
-    for email in recent_emails:
-        if email.processed_at:
-            date = email.processed_at.strftime('%Y-%m-%d')
-            daily_counts[date] = daily_counts.get(date, 0) + 1
+    # Get processing statistics for the last 7 days
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
     
     # Get average risk scores
     avg_security_score = db.session.query(func.avg(RecipientRecord.security_score)).scalar() or 0
     avg_ml_score = db.session.query(func.avg(RecipientRecord.ml_score)).scalar() or 0
+    avg_risk_score = db.session.query(func.avg(RecipientRecord.risk_score)).scalar() or 0
+    
+    # Get top risk senders (senders with highest average risk scores)
+    top_risk_senders = db.session.query(
+        EmailRecord.sender,
+        func.avg(RecipientRecord.risk_score).label('avg_risk'),
+        func.count(RecipientRecord.id).label('email_count')
+    ).join(RecipientRecord).group_by(EmailRecord.sender).order_by(
+        func.avg(RecipientRecord.risk_score).desc()
+    ).limit(5).all()
+    
+    # Get sender activity (top senders by email volume)
+    top_active_senders = db.session.query(
+        EmailRecord.sender,
+        func.count(EmailRecord.id).label('email_count')
+    ).group_by(EmailRecord.sender).order_by(
+        func.count(EmailRecord.id).desc()
+    ).limit(5).all()
     
     stats = {
         'total_emails': total_emails,
@@ -51,10 +68,15 @@ def dashboard():
         'total_cases': total_cases,
         'open_cases': open_cases,
         'flagged_recipients': flagged_recipients,
+        'total_senders': total_senders,
+        'leaver_senders': leaver_senders,
+        'sender_domains': sender_domains,
         'recent_cases': recent_cases,
-        'daily_counts': daily_counts,
         'avg_security_score': round(avg_security_score, 2),
-        'avg_ml_score': round(avg_ml_score, 2)
+        'avg_ml_score': round(avg_ml_score, 2),
+        'avg_risk_score': round(avg_risk_score, 2),
+        'top_risk_senders': top_risk_senders,
+        'top_active_senders': top_active_senders
     }
     
     return render_template('dashboard.html', stats=stats)
@@ -704,7 +726,7 @@ def dashboard_data():
     ).order_by(func.date(EmailRecord.processed_at)).all()
     
     # Create complete 7-day dataset
-    date_dict = {str(d[0]): d[1] for d in daily_stats}
+    date_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_stats}
     daily_labels = []
     daily_values = []
     
@@ -726,12 +748,65 @@ def dashboard_data():
         func.date(Case.created_at)
     ).order_by(func.date(Case.created_at)).all()
     
-    case_dict = {str(d[0]): d[1] for d in daily_case_stats}
+    case_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_case_stats}
     case_values = []
     
     for i in range(6, -1, -1):
         date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
         case_values.append(case_dict.get(date, 0))
+    
+    # Get sender domain distribution
+    domain_stats = db.session.query(
+        SenderMetadata.email_domain,
+        func.count(SenderMetadata.id)
+    ).group_by(SenderMetadata.email_domain).order_by(
+        func.count(SenderMetadata.id).desc()
+    ).limit(10).all()
+    
+    sender_domain_data = {
+        'labels': [d[0] if d[0] else 'Unknown' for d in domain_stats],
+        'data': [d[1] for d in domain_stats]
+    }
+    
+    # Get leaver vs active sender distribution
+    leaver_stats = db.session.query(
+        func.case(
+            [(SenderMetadata.leaver == 'yes', 'Leavers')],
+            else_='Active'
+        ),
+        func.count(SenderMetadata.id)
+    ).group_by(
+        func.case(
+            [(SenderMetadata.leaver == 'yes', 'Leavers')],
+            else_='Active'
+        )
+    ).all()
+    
+    leaver_dict = {s[0]: s[1] for s in leaver_stats}
+    sender_status_data = {
+        'labels': ['Active', 'Leavers'],
+        'data': [leaver_dict.get('Active', 0), leaver_dict.get('Leavers', 0)]
+    }
+    
+    # Get risk distribution
+    risk_ranges = [
+        ('Low (0-2)', 0, 2),
+        ('Medium (2-5)', 2, 5),
+        ('High (5-8)', 5, 8),
+        ('Critical (8+)', 8, 999)
+    ]
+    
+    risk_data = {'labels': [], 'data': []}
+    for label, min_score, max_score in risk_ranges:
+        if max_score == 999:
+            count = RecipientRecord.query.filter(RecipientRecord.risk_score >= min_score).count()
+        else:
+            count = RecipientRecord.query.filter(
+                RecipientRecord.risk_score >= min_score,
+                RecipientRecord.risk_score < max_score
+            ).count()
+        risk_data['labels'].append(label)
+        risk_data['data'].append(count)
     
     return jsonify({
         'severity_distribution': severity_data,
@@ -739,7 +814,10 @@ def dashboard_data():
         'daily_cases': {
             'labels': daily_labels,
             'data': case_values
-        }
+        },
+        'sender_domains': sender_domain_data,
+        'sender_status': sender_status_data,
+        'risk_distribution': risk_data
     })
 
 # Error handlers
