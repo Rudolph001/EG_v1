@@ -136,6 +136,28 @@ class ExclusionRule(db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class SenderMetadata(db.Model):
+    __tablename__ = 'sender_metadata'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    email_domain = db.Column(db.String(255))
+    
+    # User attributes
+    leaver = db.Column(db.String(10))
+    termination = db.Column(db.String(50))
+    account_type = db.Column(db.String(50))
+    bunit = db.Column(db.String(100))
+    department = db.Column(db.String(100))
+    
+    # Status tracking
+    active = db.Column(db.Boolean, default=True)
+    last_email_sent = db.Column(db.DateTime)
+    total_emails_sent = db.Column(db.Integer, default=0)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class ProcessingLog(db.Model):
     __tablename__ = 'processing_logs'
     

@@ -471,6 +471,7 @@ def clear_database():
         db.session.query(ExclusionRule).delete()
         db.session.query(WhitelistDomain).delete()
         db.session.query(WhitelistSender).delete()
+        db.session.query(SenderMetadata).delete()
         
         db.session.commit()
         flash('Database cleared successfully! All data has been removed.', 'success')
@@ -481,6 +482,50 @@ def clear_database():
         logging.error(f"Error clearing database: {str(e)}")
     
     return redirect(url_for('admin'))
+
+@app.route('/sender-metadata')
+def sender_metadata():
+    """Sender metadata management"""
+    page = request.args.get('page', 1, type=int)
+    senders = SenderMetadata.query.order_by(SenderMetadata.last_email_sent.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    return render_template('sender_metadata.html', senders=senders)
+
+@app.route('/sender-metadata/add', methods=['POST'])
+def add_sender_metadata():
+    """Add or update sender metadata"""
+    email = request.form['email'].lower()
+    
+    # Check if sender already exists
+    sender = SenderMetadata.query.filter_by(email=email).first()
+    
+    if not sender:
+        # Extract domain from email
+        domain = email.split('@')[1] if '@' in email else ''
+        
+        sender = SenderMetadata(
+            email=email,
+            email_domain=domain
+        )
+        db.session.add(sender)
+    
+    # Update attributes
+    sender.leaver = request.form.get('leaver', '')
+    sender.termination = request.form.get('termination', '')
+    sender.account_type = request.form.get('account_type', '')
+    sender.bunit = request.form.get('bunit', '')
+    sender.department = request.form.get('department', '')
+    sender.updated_at = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        flash('Sender metadata updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating sender metadata: {str(e)}', 'error')
+    
+    return redirect(url_for('sender_metadata'))
 
 @app.route('/audit')
 def audit():

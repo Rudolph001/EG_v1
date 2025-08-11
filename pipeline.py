@@ -352,6 +352,9 @@ class EmailProcessingPipeline:
             db.session.add(email_record)
             db.session.flush()  # This assigns the ID without committing
 
+            # Update sender metadata
+            self._update_sender_metadata(email_record.sender)
+
             # Now set the email_id for all recipients and add them in batch
             for recipient in processed_recipients:
                 recipient.email_id = email_record.id
@@ -466,17 +469,12 @@ class EmailProcessingPipeline:
         elif rule_type == 'attachment':
             return self._match_pattern(pattern, email_record.attachments or '')
         elif rule_type == 'leaver':
-            # Check if sender has leaver = "yes" - need to find sender's leaver status
-            # Since we don't have sender's leaver status in email_record, we need to check 
-            # if any recipient with this sender email has leaver = "yes"
-            if pattern.lower() == 'yes':
-                # For now, check if the sender appears in any recipient record with leaver = "yes"
-                # This is a simplified approach - in reality you'd need sender metadata
-                sender_email = email_record.sender.lower()
-                return sender_email and any(
-                    rec.recipient.lower() == sender_email and (rec.leaver or '').lower() == 'yes' 
-                    for rec in email_record.recipients
-                )
+            # Check if sender has leaver status matching the pattern
+            sender_metadata = self._get_sender_metadata(email_record.sender)
+            if sender_metadata:
+                leaver_value = (sender_metadata.leaver or '').lower().strip()
+                pattern_value = pattern.lower().strip()
+                return pattern_value in leaver_value or (pattern_value == 'yes' and leaver_value == 'yes')
             return False
         elif rule_type == 'termination':
             termination_value = (recipient_record.termination or '').lower().strip()
@@ -594,6 +592,46 @@ class EmailProcessingPipeline:
             return 'medium'
         else:
             return 'low'
+
+    def _get_sender_metadata(self, sender_email):
+        """Get or create sender metadata"""
+        if not hasattr(self, '_sender_metadata_cache'):
+            self._sender_metadata_cache = {}
+        
+        sender_email_lower = sender_email.lower()
+        
+        if sender_email_lower not in self._sender_metadata_cache:
+            from models import SenderMetadata
+            metadata = SenderMetadata.query.filter_by(email=sender_email_lower).first()
+            self._sender_metadata_cache[sender_email_lower] = metadata
+        
+        return self._sender_metadata_cache[sender_email_lower]
+
+    def _update_sender_metadata(self, sender_email):
+        """Update sender metadata with email activity"""
+        from models import SenderMetadata
+        from sqlalchemy import func
+        
+        sender_email_lower = sender_email.lower()
+        metadata = SenderMetadata.query.filter_by(email=sender_email_lower).first()
+        
+        if not metadata:
+            # Extract domain from sender email
+            domain = sender_email.split('@')[1].lower() if '@' in sender_email else ''
+            
+            metadata = SenderMetadata(
+                email=sender_email_lower,
+                email_domain=domain,
+                last_email_sent=datetime.utcnow(),
+                total_emails_sent=1
+            )
+            db.session.add(metadata)
+        else:
+            metadata.last_email_sent = datetime.utcnow()
+            metadata.total_emails_sent = (metadata.total_emails_sent or 0) + 1
+            metadata.updated_at = datetime.utcnow()
+        
+        return metadata
 
     def _log_processing(self, email_id, stage, status, message, processing_time=None):
         """Log processing step - using Python logging instead of database for performance"""

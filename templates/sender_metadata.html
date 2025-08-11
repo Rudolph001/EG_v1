@@ -1,0 +1,205 @@
+
+{% extends "base.html" %}
+
+{% block title %}Sender Metadata - Email Guardian{% endblock %}
+
+{% block page_title %}Sender Metadata{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSenderModal">
+    <i class="fas fa-plus"></i> Add Sender
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-user-tie"></i> Sender Information Database</h5>
+    </div>
+    <div class="card-body">
+        {% if senders.items %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="sendersTable">
+                <thead>
+                    <tr>
+                        <th>Email Address</th>
+                        <th>Domain</th>
+                        <th>Leaver Status</th>
+                        <th>Account Type</th>
+                        <th>Department</th>
+                        <th>Last Email</th>
+                        <th>Total Emails</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sender in senders.items %}
+                    <tr>
+                        <td>
+                            <i class="fas fa-envelope text-primary"></i>
+                            <strong>{{ sender.email }}</strong>
+                        </td>
+                        <td>{{ sender.email_domain or '-' }}</td>
+                        <td>
+                            {% if sender.leaver == 'yes' %}
+                                <span class="badge bg-warning">Leaver</span>
+                            {% else %}
+                                <span class="badge bg-success">Active</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ sender.account_type or '-' }}</td>
+                        <td>{{ sender.department or '-' }}</td>
+                        <td>
+                            {% if sender.last_email_sent %}
+                                <small>{{ sender.last_email_sent.strftime('%Y-%m-%d %H:%M') }}</small>
+                            {% else %}
+                                <small>-</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ sender.total_emails_sent or 0 }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-warning btn-sm" onclick="editSender({{ sender.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if senders.pages > 1 %}
+        <nav aria-label="Sender pagination">
+            <ul class="pagination justify-content-center">
+                {% if senders.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('sender_metadata', page=senders.prev_num) }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in senders.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != senders.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('sender_metadata', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if senders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('sender_metadata', page=senders.next_num) }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
+            <h5>No Sender Information</h5>
+            <p class="text-muted">Add sender metadata to track leaver status and other attributes.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSenderModal">
+                <i class="fas fa-plus"></i> Add First Sender
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Sender Modal -->
+<div class="modal fade" id="addSenderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add/Update Sender Metadata</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_sender_metadata') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="email" name="email" required 
+                               placeholder="user@example.com">
+                        <div class="form-text">Enter the complete email address</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="leaver" class="form-label">Leaver Status</label>
+                        <select class="form-select" id="leaver" name="leaver">
+                            <option value="">Not specified</option>
+                            <option value="yes">Yes (Leaver)</option>
+                            <option value="no">No (Active)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="termination" class="form-label">Termination Status</label>
+                        <input type="text" class="form-control" id="termination" name="termination" 
+                               placeholder="e.g., voluntary, involuntary">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="account_type" class="form-label">Account Type</label>
+                        <input type="text" class="form-control" id="account_type" name="account_type" 
+                               placeholder="e.g., employee, contractor, vendor">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bunit" class="form-label">Business Unit</label>
+                        <input type="text" class="form-control" id="bunit" name="bunit" 
+                               placeholder="e.g., Sales, Engineering, HR">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department</label>
+                        <input type="text" class="form-control" id="department" name="department" 
+                               placeholder="e.g., Marketing, IT, Finance">
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> This information will be used by security rules to check sender attributes during email processing.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Metadata</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#sendersTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 5, "desc" ]], // Sort by last email date
+        "columnDefs": [
+            { "orderable": false, "targets": 7 } // Disable sorting on actions column
+        ]
+    });
+});
+
+function editSender(senderId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+</script>
+{% endblock %}
