@@ -229,12 +229,14 @@ class EmailProcessingPipeline:
         # Check sender whitelist
         if email_record.sender.lower() in self._cached_whitelist_senders:
             recipient_record.whitelisted = True
+            recipient_record.whitelist_reason = f"Sender '{email_record.sender}' is in whitelist"
             return
 
         # Check domain whitelist
         sender_domain = email_record.sender.split('@')[1].lower() if '@' in email_record.sender else ''
         if sender_domain in self._cached_whitelist_domains:
             recipient_record.whitelisted = True
+            recipient_record.whitelist_reason = f"Domain '{sender_domain}' is in whitelist"
             return
 
     def _stage_5_security_rules(self, recipient_record, email_record):
@@ -255,14 +257,23 @@ class EmailProcessingPipeline:
                 })
 
         security_score = 0.0
+        matched_rules = []
 
         for rule_data in self._cached_security_rules_data:
             if self._match_rule_data(rule_data, recipient_record, email_record):
                 # Add score based on severity
                 severity_weights = {'low': 1.0, 'medium': 2.0, 'high': 3.0, 'critical': 5.0}
                 security_score += severity_weights.get(rule_data['severity'], 1.0)
+                
+                # Track matched rule
+                matched_rules.append({
+                    'name': rule_data['name'],
+                    'severity': rule_data['severity'],
+                    'score_added': severity_weights.get(rule_data['severity'], 1.0)
+                })
 
         recipient_record.security_score = security_score
+        recipient_record.matched_security_rules = matched_rules
 
     def _stage_6_risk_keywords(self, recipient_record, email_record):
         """Stage 6: Detect risk keywords and calculate risk score"""
@@ -279,14 +290,21 @@ class EmailProcessingPipeline:
                 })
 
         risk_score = 0.0
+        matched_keywords = []
 
         text_to_analyze = f"{email_record.subject} {email_record.attachments} {recipient_record.wordlist_subject} {recipient_record.wordlist_attachment}".lower()
 
         for keyword_data in self._cached_risk_keywords_data:
             if keyword_data['keyword'].lower() in text_to_analyze:
                 risk_score += keyword_data['weight']
+                matched_keywords.append({
+                    'keyword': keyword_data['keyword'],
+                    'category': keyword_data['category'],
+                    'weight': keyword_data['weight']
+                })
 
         recipient_record.risk_score = risk_score
+        recipient_record.matched_risk_keywords = matched_keywords
 
     def _stage_7_exclusion_keywords(self, recipient_record, email_record):
         """Stage 7: Apply exclusion keywords to reduce false positives"""

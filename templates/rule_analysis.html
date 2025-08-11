@@ -1,0 +1,195 @@
+
+{% extends "base.html" %}
+
+{% block title %}Rule Analysis - Email Guardian{% endblock %}
+
+{% block page_title %}Rule Analysis & Whitelist Effectiveness{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Summary Cards -->
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5>Total Recipients</h5>
+                <h2>{{ "{:,}".format(stats.total_recipients) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5>Whitelisted</h5>
+                <h2>{{ "{:,}".format(stats.whitelisted_count) }}</h2>
+                <small>{{ "%.1f"|format(stats.whitelist_percentage) }}% of total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5>Security Rules</h5>
+                <h2>{{ stats.security_rule_stats|length }}</h2>
+                <small>Currently matching</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5>Whitelist Sources</h5>
+                <h2>{{ stats.whitelist_reasons|length }}</h2>
+                <small>Different sources</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Security Rule Performance -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt"></i> Security Rule Matches</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.security_rule_stats %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Rule Name</th>
+                                <th>Severity</th>
+                                <th>Matches</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rule in stats.security_rule_stats %}
+                            <tr>
+                                <td>{{ rule.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if rule.severity == 'critical' else 'warning' if rule.severity == 'high' else 'info' }}">
+                                        {{ rule.severity.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ rule.match_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No security rule matches found in processed emails.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Whitelist Analysis -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-check-circle"></i> Whitelist Effectiveness</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.whitelist_reasons %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Whitelist Reason</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reason in stats.whitelist_reasons %}
+                            <tr>
+                                <td>{{ reason.whitelist_reason }}</td>
+                                <td>{{ reason.count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No whitelisted emails found in processed data.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Rule Matches -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Recent Rule Matches (Last 50)</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_matches %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Sender</th>
+                                <th>Subject</th>
+                                <th>Recipient</th>
+                                <th>Status</th>
+                                <th>Matched Rules</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for email, recipient in stats.recent_matches %}
+                            <tr>
+                                <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at else 'N/A' }}</td>
+                                <td>{{ email.sender }}</td>
+                                <td>{{ email.subject[:50] }}{% if email.subject|length > 50 %}...{% endif %}</td>
+                                <td>{{ recipient.recipient }}</td>
+                                <td>
+                                    {% if recipient.whitelisted %}
+                                    <span class="badge bg-success">Whitelisted</span>
+                                    {% elif recipient.flagged %}
+                                    <span class="badge bg-danger">Flagged</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Normal</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if recipient.matched_security_rules %}
+                                        {% for rule in recipient.matched_security_rules[:2] %}
+                                        <span class="badge bg-warning me-1">{{ rule.name }}</span>
+                                        {% endfor %}
+                                        {% if recipient.matched_security_rules|length > 2 %}
+                                        <span class="text-muted">+{{ recipient.matched_security_rules|length - 2 }} more</span>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% if recipient.matched_risk_keywords %}
+                                        {% for keyword in recipient.matched_risk_keywords[:2] %}
+                                        <span class="badge bg-info me-1">{{ keyword.keyword }}</span>
+                                        {% endfor %}
+                                        {% if recipient.matched_risk_keywords|length > 2 %}
+                                        <span class="text-muted">+{{ recipient.matched_risk_keywords|length - 2 }} more</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-sm btn-outline-primary">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No recent rule matches found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

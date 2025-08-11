@@ -1495,6 +1495,61 @@ def scoring_help():
     
     return render_template('scoring_help.html', stats=stats, title='Scoring System Help')
 
+@app.route('/rule-analysis')
+def rule_analysis():
+    """Analysis of rule matching and whitelist effectiveness"""
+    try:
+        # Get rule matching statistics
+        security_rule_stats = db.session.query(
+            SecurityRule.name,
+            SecurityRule.severity,
+            func.count(RecipientRecord.id).label('match_count')
+        ).join(
+            RecipientRecord, 
+            func.json_extract(RecipientRecord.matched_security_rules, '$[*].name').contains(SecurityRule.name)
+        ).filter(SecurityRule.active == True).group_by(
+            SecurityRule.name, SecurityRule.severity
+        ).all()
+        
+        # Get whitelist statistics
+        whitelisted_count = RecipientRecord.query.filter_by(whitelisted=True).count()
+        total_recipients = RecipientRecord.query.count()
+        
+        whitelist_reasons = db.session.query(
+            RecipientRecord.whitelist_reason,
+            func.count(RecipientRecord.id).label('count')
+        ).filter(
+            RecipientRecord.whitelisted == True,
+            RecipientRecord.whitelist_reason.isnot(None)
+        ).group_by(RecipientRecord.whitelist_reason).all()
+        
+        # Get recent rule matches
+        recent_matches = db.session.query(EmailRecord, RecipientRecord).join(
+            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
+        ).filter(
+            or_(
+                RecipientRecord.matched_security_rules.isnot(None),
+                RecipientRecord.matched_risk_keywords.isnot(None),
+                RecipientRecord.whitelisted == True
+            )
+        ).order_by(EmailRecord.processed_at.desc()).limit(50).all()
+        
+        stats = {
+            'security_rule_stats': security_rule_stats,
+            'whitelisted_count': whitelisted_count,
+            'total_recipients': total_recipients,
+            'whitelist_percentage': (whitelisted_count / max(total_recipients, 1)) * 100,
+            'whitelist_reasons': whitelist_reasons,
+            'recent_matches': recent_matches
+        }
+        
+        return render_template('rule_analysis.html', stats=stats)
+        
+    except Exception as e:
+        logging.error(f"Error in rule analysis: {str(e)}")
+        flash('Error loading rule analysis data', 'error')
+        return redirect(url_for('dashboard'))
+
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""

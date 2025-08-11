@@ -58,6 +58,11 @@ class RecipientRecord(db.Model):
     flagged = db.Column(db.Boolean, default=False)
     case_generated = db.Column(db.Boolean, default=False)
     
+    # Rule matching results
+    matched_security_rules = db.Column(JSON)  # List of matched security rule names
+    matched_risk_keywords = db.Column(JSON)  # List of matched risk keywords
+    whitelist_reason = db.Column(db.String(255))  # Why it was whitelisted
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Case(db.Model):

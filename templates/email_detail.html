@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Email Details - Email Guardian{% endblock %}
@@ -119,7 +118,7 @@
                             {% set _ = clean_attachments.append(clean_att) %}
                         {% endif %}
                     {% endfor %}
-                    
+
                     {% if clean_attachments %}
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -240,11 +239,9 @@
                                     <small class="text-muted d-block">{{ "%.2f"|format(combined_score) }}</small>
                                 </td>
                                 <td>
-                                    {% if recipient.flagged %}
-                                    <i class="fas fa-flag text-danger"></i>
-                                    {% else %}
-                                    <i class="fas fa-check text-success"></i>
-                                    {% endif %}
+                                    <span class="badge bg-{{ 'danger' if recipient.flagged else 'success' }}">
+                                        {{ 'Yes' if recipient.flagged else 'No' }}
+                                    </span>
                                 </td>
                                 <td>
                                     <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editScoreModal{{ recipient.id }}" title="Edit Scores">
@@ -252,6 +249,41 @@
                                     </button>
                                 </td>
                             </tr>
+                            <tr>
+                                <th>Whitelist Status</th>
+                                <td>
+                                    <span class="badge bg-success">Whitelisted</span>
+                                    {% if recipient.whitelist_reason %}
+                                    <br><small class="text-muted">{{ recipient.whitelist_reason }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            {% if recipient.matched_security_rules %}
+                            <tr>
+                                <th>Matched Security Rules</th>
+                                <td>
+                                    {% for rule in recipient.matched_security_rules %}
+                                    <span class="badge bg-{{ 'danger' if rule.severity == 'critical' else 'warning' if rule.severity == 'high' else 'info' }} me-1 mb-1">
+                                        {{ rule.name }} ({{ rule.severity }}, +{{ rule.score_added }})
+                                    </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endif %}
+
+                            {% if recipient.matched_risk_keywords %}
+                            <tr>
+                                <th>Matched Risk Keywords</th>
+                                <td>
+                                    {% for keyword in recipient.matched_risk_keywords %}
+                                    <span class="badge bg-warning me-1 mb-1">
+                                        {{ keyword.keyword }} ({{ keyword.category }}, +{{ keyword.weight }})
+                                    </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -265,7 +297,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Actions Sidebar -->
     <div class="col-lg-4">
         <div class="card shadow mb-4">
@@ -277,17 +309,17 @@
                     <a href="{{ url_for('emails') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left"></i> Back to Emails
                     </a>
-                    
+
                     <form method="POST" action="{{ url_for('rescore_email', email_id=email.id) }}" style="display: inline;">
                         <button type="submit" class="btn btn-warning" onclick="return confirm('This will re-run the scoring pipeline for this email. Continue?')">
                             <i class="fas fa-sync"></i> Rescore Email
                         </button>
                     </form>
-                    
+
                     <a href="{{ url_for('scoring_help') }}" class="btn btn-info">
                         <i class="fas fa-question-circle"></i> Scoring Help
                     </a>
-                    
+
                     {% if email.cases %}
                     {% for case in email.cases %}
                     <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-primary">
@@ -298,7 +330,7 @@
                 </div>
             </div>
         </div>
-        
+
         {% if email.cases %}
         <div class="card shadow">
             <div class="card-header">
@@ -373,7 +405,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="alert alert-info">
                         <strong>Scoring Information:</strong><br>
                         • <strong>Security Score:</strong> Triggered by security rules in your rules engine<br>
@@ -381,7 +413,7 @@
                         • <strong>ML Scores:</strong> Generated by machine learning models<br>
                         • <strong>Combined Risk:</strong> Security(30%) + Risk(20%) + BasicML(25%) + AdvancedML(25%)
                     </div>
-                    
+
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="flagged" 
                                {{ 'checked' if recipient.flagged else '' }} id="flagged{{ recipient.id }}">
