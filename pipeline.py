@@ -466,10 +466,18 @@ class EmailProcessingPipeline:
         elif rule_type == 'attachment':
             return self._match_pattern(pattern, email_record.attachments or '')
         elif rule_type == 'leaver':
-            # Check if leaver field contains the pattern value
-            leaver_value = (recipient_record.leaver or '').lower().strip()
-            pattern_value = pattern.lower().strip()
-            return pattern_value in leaver_value or leaver_value == 'yes'
+            # Check if sender has leaver = "yes" - need to find sender's leaver status
+            # Since we don't have sender's leaver status in email_record, we need to check 
+            # if any recipient with this sender email has leaver = "yes"
+            if pattern.lower() == 'yes':
+                # For now, check if the sender appears in any recipient record with leaver = "yes"
+                # This is a simplified approach - in reality you'd need sender metadata
+                sender_email = email_record.sender.lower()
+                return sender_email and any(
+                    rec.recipient.lower() == sender_email and (rec.leaver or '').lower() == 'yes' 
+                    for rec in email_record.recipients
+                )
+            return False
         elif rule_type == 'termination':
             termination_value = (recipient_record.termination or '').lower().strip()
             pattern_value = pattern.lower().strip()
