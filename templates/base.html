@@ -86,6 +86,11 @@
                                             <i class="fas fa-check"></i> Cleared Cases
                                         </a>
                                     </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('emails') }}">
+                                            <i class="fas fa-envelope"></i> Processed Emails
+                                        </a>
+                                    </li>
                                 </ul>
                             </div>
                         </li>
@@ -97,11 +102,6 @@
                             </a>
                             <div class="collapse" id="dataMenu">
                                 <ul class="nav flex-column ms-3">
-                                    <li class="nav-item">
-                                        <a class="nav-link text-white-50" href="{{ url_for('emails') }}">
-                                            <i class="fas fa-envelope"></i> Processed Emails
-                                        </a>
-                                    </li>
                                     <li class="nav-item">
                                         <a class="nav-link text-white-50" href="{{ url_for('recipients') }}">
                                             <i class="fas fa-users"></i> Recipients
