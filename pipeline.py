@@ -198,12 +198,21 @@ class EmailProcessingPipeline:
 
     def _stage_3_exclusion_rules(self, recipient_record, email_record):
         """Stage 3: Filter out emails based on exclusion criteria"""
-        # Cache exclusion rules to avoid repeated database queries
-        if not hasattr(self, '_cached_exclusion_rules'):
-            self._cached_exclusion_rules = ExclusionRule.query.filter_by(active=True).all()
+        # Cache exclusion rules data to avoid repeated database queries and session issues
+        if not hasattr(self, '_cached_exclusion_rules_data'):
+            exclusion_rules = ExclusionRule.query.filter_by(active=True).all()
+            self._cached_exclusion_rules_data = []
+            for rule in exclusion_rules:
+                self._cached_exclusion_rules_data.append({
+                    'id': rule.id,
+                    'name': rule.name,
+                    'rule_type': rule.rule_type,
+                    'pattern': rule.pattern,
+                    'active': rule.active
+                })
 
-        for rule in self._cached_exclusion_rules:
-            if self._match_rule(rule, recipient_record, email_record):
+        for rule_data in self._cached_exclusion_rules_data:
+            if self._match_rule_data(rule_data, recipient_record, email_record):
                 recipient_record.excluded = True
                 return True
 
@@ -230,33 +239,52 @@ class EmailProcessingPipeline:
 
     def _stage_5_security_rules(self, recipient_record, email_record):
         """Stage 5: Apply security rules and calculate score"""
-        # Cache security rules to avoid repeated database queries
-        if not hasattr(self, '_cached_security_rules'):
-            self._cached_security_rules = SecurityRule.query.filter_by(active=True).all()
+        # Cache security rules data to avoid repeated database queries and session issues
+        if not hasattr(self, '_cached_security_rules_data'):
+            security_rules = SecurityRule.query.filter_by(active=True).all()
+            self._cached_security_rules_data = []
+            for rule in security_rules:
+                self._cached_security_rules_data.append({
+                    'id': rule.id,
+                    'name': rule.name,
+                    'rule_type': rule.rule_type,
+                    'pattern': rule.pattern,
+                    'action': rule.action,
+                    'severity': rule.severity,
+                    'active': rule.active
+                })
 
         security_score = 0.0
 
-        for rule in self._cached_security_rules:
-            if self._match_rule(rule, recipient_record, email_record):
+        for rule_data in self._cached_security_rules_data:
+            if self._match_rule_data(rule_data, recipient_record, email_record):
                 # Add score based on severity
                 severity_weights = {'low': 1.0, 'medium': 2.0, 'high': 3.0, 'critical': 5.0}
-                security_score += severity_weights.get(rule.severity, 1.0)
+                security_score += severity_weights.get(rule_data['severity'], 1.0)
 
         recipient_record.security_score = security_score
 
     def _stage_6_risk_keywords(self, recipient_record, email_record):
         """Stage 6: Detect risk keywords and calculate risk score"""
-        # Cache risk keywords to avoid repeated database queries
-        if not hasattr(self, '_cached_risk_keywords'):
-            self._cached_risk_keywords = RiskKeyword.query.filter_by(active=True).all()
+        # Cache risk keywords data to avoid repeated database queries and session issues
+        if not hasattr(self, '_cached_risk_keywords_data'):
+            risk_keywords = RiskKeyword.query.filter_by(active=True).all()
+            self._cached_risk_keywords_data = []
+            for keyword in risk_keywords:
+                self._cached_risk_keywords_data.append({
+                    'keyword': keyword.keyword,
+                    'category': keyword.category,
+                    'weight': keyword.weight,
+                    'active': keyword.active
+                })
 
         risk_score = 0.0
 
         text_to_analyze = f"{email_record.subject} {email_record.attachments} {recipient_record.wordlist_subject} {recipient_record.wordlist_attachment}".lower()
 
-        for keyword in self._cached_risk_keywords:
-            if keyword.keyword.lower() in text_to_analyze:
-                risk_score += keyword.weight
+        for keyword_data in self._cached_risk_keywords_data:
+            if keyword_data['keyword'].lower() in text_to_analyze:
+                risk_score += keyword_data['weight']
 
         recipient_record.risk_score = risk_score
 
@@ -384,6 +412,42 @@ class EmailProcessingPipeline:
 
         return False
 
+    def _match_rule_data(self, rule_data, recipient_record, email_record):
+        """Check if a rule data dict matches the given email/recipient"""
+        try:
+            import json
+
+            # Try to parse pattern as JSON (new multi-condition format)
+            try:
+                rule_config = json.loads(rule_data['pattern'])
+                conditions = rule_config.get('conditions', [])
+                logical_operator = rule_config.get('logical_operator', 'AND')
+
+                if conditions:
+                    return self._evaluate_conditions(conditions, logical_operator, recipient_record, email_record)
+            except json.JSONDecodeError:
+                # Fall back to legacy single pattern matching
+                pass
+
+            # Legacy single pattern matching
+            pattern = rule_data['pattern'].lower()
+
+            if rule_data['rule_type'] == 'sender':
+                return pattern in email_record.sender.lower()
+            elif rule_data['rule_type'] == 'subject':
+                return pattern in (email_record.subject or '').lower()
+            elif rule_data['rule_type'] == 'attachment':
+                return pattern in (email_record.attachments or '').lower()
+            elif rule_data['rule_type'] == 'recipient':
+                return pattern in recipient_record.recipient.lower()
+            elif rule_data['rule_type'] == 'domain':
+                return pattern in (recipient_record.recipient_email_domain or '').lower()
+
+        except Exception as e:
+            self.logger.error(f"Error matching rule {rule_data['name']}: {str(e)}")
+
+        return False
+
     def _evaluate_conditions(self, conditions, logical_operator, recipient_record, email_record):
         """Evaluate multiple conditions with logical operators"""
         results = []
@@ -417,7 +481,7 @@ class EmailProcessingPipeline:
             'termination': recipient_record.termination or '',
             'account_type': recipient_record.account_type or '',
             'bunit': recipient_record.bunit or '',
-            'department': recipient_data.department or '',
+            'department': recipient_record.department or '',
             'timestamp': str(email_record.timestamp) if email_record.timestamp else ''
         }
 
