@@ -11,7 +11,7 @@
         
         <!-- Filters -->
         <div class="row mt-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="whitelistFilter" class="form-label">Whitelist Status</label>
                 <select class="form-select form-select-sm" id="whitelistFilter">
                     <option value="">All</option>
@@ -19,7 +19,7 @@
                     <option value="not-whitelisted">Not Whitelisted</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="riskKeywordFilter" class="form-label">Risk Keywords</label>
                 <select class="form-select form-select-sm" id="riskKeywordFilter">
                     <option value="">All</option>
@@ -27,7 +27,7 @@
                     <option value="no-keywords">No Risk Keywords</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="severityFilter" class="form-label">Severity</label>
                 <select class="form-select form-select-sm" id="severityFilter">
                     <option value="">All</option>
@@ -38,7 +38,53 @@
                     <option value="normal">Normal</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label for="riskLevelFilter" class="form-label">Risk Level</label>
+                <select class="form-select form-select-sm" id="riskLevelFilter">
+                    <option value="">All</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="minimal">Minimal</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="flaggedFilter" class="form-label">Flagged Status</label>
+                <select class="form-select form-select-sm" id="flaggedFilter">
+                    <option value="">All</option>
+                    <option value="flagged">Has Flagged Recipients</option>
+                    <option value="not-flagged">No Flagged Recipients</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="leaverFilter" class="form-label">Leaver Status</label>
+                <select class="form-select form-select-sm" id="leaverFilter">
+                    <option value="">All</option>
+                    <option value="has-leaver">Has Leaver Recipients</option>
+                    <option value="no-leaver">No Leaver Recipients</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-2">
+                <label for="statusFilter" class="form-label">Pipeline Status</label>
+                <select class="form-select form-select-sm" id="statusFilter">
+                    <option value="">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="processing">Processing</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="attachmentFilter" class="form-label">Attachments</label>
+                <select class="form-select form-select-sm" id="attachmentFilter">
+                    <option value="">All</option>
+                    <option value="has-attachments">Has Attachments</option>
+                    <option value="no-attachments">No Attachments</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <button type="button" class="btn btn-secondary btn-sm mt-4" id="clearFilters">Clear Filters</button>
             </div>
         </div>
@@ -378,10 +424,15 @@ $(document).ready(function() {
                     const whitelistFilter = $('#whitelistFilter').val();
                     const riskKeywordFilter = $('#riskKeywordFilter').val();
                     const severityFilter = $('#severityFilter').val();
+                    const riskLevelFilter = $('#riskLevelFilter').val();
+                    const flaggedFilter = $('#flaggedFilter').val();
+                    const leaverFilter = $('#leaverFilter').val();
+                    const statusFilter = $('#statusFilter').val();
+                    const attachmentFilter = $('#attachmentFilter').val();
                     
-                    // Whitelist filter
+                    // Whitelist filter (column 12)
                     if (whitelistFilter) {
-                        const whitelistText = data[12].toLowerCase(); // Whitelist Status column (now column 12)
+                        const whitelistText = data[12].toLowerCase();
                         if (whitelistFilter === 'whitelisted' && !whitelistText.includes('whitelisted')) {
                             return false;
                         }
@@ -390,9 +441,9 @@ $(document).ready(function() {
                         }
                     }
                     
-                    // Risk keyword filter
+                    // Risk keyword filter (column 13)
                     if (riskKeywordFilter) {
-                        const riskText = data[13].toLowerCase(); // Risk Keywords column (now column 13)
+                        const riskText = data[13].toLowerCase();
                         if (riskKeywordFilter === 'has-keywords' && riskText.includes('none')) {
                             return false;
                         }
@@ -401,10 +452,59 @@ $(document).ready(function() {
                         }
                     }
                     
-                    // Severity filter
+                    // Severity filter (column 14)
                     if (severityFilter) {
-                        const severityText = data[14].toLowerCase(); // Severity column (now column 14)
+                        const severityText = data[14].toLowerCase();
                         if (!severityText.includes(severityFilter.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Risk level filter (column 10)
+                    if (riskLevelFilter) {
+                        const riskLevelText = data[10].toLowerCase();
+                        if (!riskLevelText.includes(riskLevelFilter.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Flagged filter (column 11)
+                    if (flaggedFilter) {
+                        const flaggedText = data[11].toLowerCase();
+                        if (flaggedFilter === 'flagged' && flaggedText.includes('none')) {
+                            return false;
+                        }
+                        if (flaggedFilter === 'not-flagged' && !flaggedText.includes('none')) {
+                            return false;
+                        }
+                    }
+                    
+                    // Leaver filter (column 6)
+                    if (leaverFilter) {
+                        const leaverText = data[6].toLowerCase();
+                        if (leaverFilter === 'has-leaver' && !leaverText.includes('leaver')) {
+                            return false;
+                        }
+                        if (leaverFilter === 'no-leaver' && leaverText.includes('leaver')) {
+                            return false;
+                        }
+                    }
+                    
+                    // Status filter (column 16)
+                    if (statusFilter) {
+                        const statusText = data[16].toLowerCase();
+                        if (!statusText.includes(statusFilter.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Attachment filter (column 5)
+                    if (attachmentFilter) {
+                        const attachmentText = data[5].toLowerCase();
+                        if (attachmentFilter === 'has-attachments' && attachmentText.includes('0 attachments')) {
+                            return false;
+                        }
+                        if (attachmentFilter === 'no-attachments' && !attachmentText.includes('0 attachments')) {
                             return false;
                         }
                     }
@@ -416,13 +516,13 @@ $(document).ready(function() {
     });
     
     // Filter event handlers
-    $('#whitelistFilter, #riskKeywordFilter, #severityFilter').on('change', function () {
+    $('#whitelistFilter, #riskKeywordFilter, #severityFilter, #riskLevelFilter, #flaggedFilter, #leaverFilter, #statusFilter, #attachmentFilter').on('change', function () {
         table.draw();
     });
     
     // Clear filters
     $('#clearFilters').on('click', function () {
-        $('#whitelistFilter, #riskKeywordFilter, #severityFilter').val('');
+        $('#whitelistFilter, #riskKeywordFilter, #severityFilter, #riskLevelFilter, #flaggedFilter, #leaverFilter, #statusFilter, #attachmentFilter').val('');
         table.draw();
     });
     
