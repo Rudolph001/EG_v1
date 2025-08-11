@@ -187,7 +187,10 @@
                                 <th>Recipient</th>
                                 <th>Security Score</th>
                                 <th>Risk Score</th>
+                                <th>ML Scores</th>
+                                <th>Risk Level</th>
                                 <th>Flagged</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -195,14 +198,46 @@
                             <tr>
                                 <td>{{ recipient.recipient }}</td>
                                 <td>
-                                    <span class="badge bg-{{ 'danger' if recipient.security_score > 5 else 'warning' if recipient.security_score > 3 else 'success' }}">
-                                        {{ "%.1f"|format(recipient.security_score) }}
+                                    <span class="badge bg-{{ 'danger' if recipient.security_score and recipient.security_score > 5 else 'warning' if recipient.security_score and recipient.security_score > 3 else 'success' }}">
+                                        {{ "%.1f"|format(recipient.security_score or 0) }}
                                     </span>
+                                    {% if not recipient.security_score or recipient.security_score == 0 %}
+                                    <small class="text-muted d-block">Not scored</small>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ 'danger' if recipient.risk_score > 5 else 'warning' if recipient.risk_score > 3 else 'success' }}">
-                                        {{ "%.1f"|format(recipient.risk_score) }}
+                                    <span class="badge bg-{{ 'danger' if recipient.risk_score and recipient.risk_score > 5 else 'warning' if recipient.risk_score and recipient.risk_score > 3 else 'success' }}">
+                                        {{ "%.1f"|format(recipient.risk_score or 0) }}
                                     </span>
+                                    {% if not recipient.risk_score or recipient.risk_score == 0 %}
+                                    <small class="text-muted d-block">Not scored</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>
+                                        <small class="d-block">Basic ML: 
+                                            <span class="badge bg-info">{{ "%.1f"|format(recipient.ml_score or 0) }}</span>
+                                        </small>
+                                        <small class="d-block">Advanced ML: 
+                                            <span class="badge bg-primary">{{ "%.1f"|format(recipient.advanced_ml_score or 0) }}</span>
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set combined_score = (
+                                        (recipient.security_score or 0) * 0.3 +
+                                        (recipient.risk_score or 0) * 0.2 +
+                                        (recipient.ml_score or 0) * 0.25 +
+                                        (recipient.advanced_ml_score or 0) * 0.25
+                                    ) %}
+                                    <span class="badge bg-{{ 'danger' if combined_score >= 7 else 'warning' if combined_score >= 5 else 'info' if combined_score >= 3 else 'success' }}">
+                                        {% if combined_score >= 7 %}Critical
+                                        {% elif combined_score >= 5 %}High
+                                        {% elif combined_score >= 3 %}Medium
+                                        {% else %}Low
+                                        {% endif %}
+                                    </span>
+                                    <small class="text-muted d-block">{{ "%.2f"|format(combined_score) }}</small>
                                 </td>
                                 <td>
                                     {% if recipient.flagged %}
@@ -210,6 +245,11 @@
                                     {% else %}
                                     <i class="fas fa-check text-success"></i>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editScoreModal{{ recipient.id }}" title="Edit Scores">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -237,6 +277,17 @@
                     <a href="{{ url_for('emails') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left"></i> Back to Emails
                     </a>
+                    
+                    <form method="POST" action="{{ url_for('rescore_email', email_id=email.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-warning" onclick="return confirm('This will re-run the scoring pipeline for this email. Continue?')">
+                            <i class="fas fa-sync"></i> Rescore Email
+                        </button>
+                    </form>
+                    
+                    <a href="{{ url_for('scoring_help') }}" class="btn btn-info">
+                        <i class="fas fa-question-circle"></i> Scoring Help
+                    </a>
+                    
                     {% if email.cases %}
                     {% for case in email.cases %}
                     <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-primary">
@@ -273,4 +324,80 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Score Edit Modals -->
+{% if email.recipients %}
+{% for recipient in email.recipients %}
+<div class="modal fade" id="editScoreModal{{ recipient.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Scores for {{ recipient.recipient }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_recipient_scores', recipient_id=recipient.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Security Score</label>
+                                <input type="number" class="form-control" name="security_score" 
+                                       value="{{ recipient.security_score or 0 }}" step="0.1" min="0" max="10">
+                                <small class="text-muted">Based on security rules (0-10)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Risk Score</label>
+                                <input type="number" class="form-control" name="risk_score" 
+                                       value="{{ recipient.risk_score or 0 }}" step="0.1" min="0" max="10">
+                                <small class="text-muted">Based on risk keywords (0-10)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Basic ML Score</label>
+                                <input type="number" class="form-control" name="ml_score" 
+                                       value="{{ recipient.ml_score or 0 }}" step="0.1" min="0" max="10">
+                                <small class="text-muted">Isolation Forest result (0-10)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Advanced ML Score</label>
+                                <input type="number" class="form-control" name="advanced_ml_score" 
+                                       value="{{ recipient.advanced_ml_score or 0 }}" step="0.1" min="0" max="10">
+                                <small class="text-muted">Network analysis result (0-10)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Scoring Information:</strong><br>
+                        • <strong>Security Score:</strong> Triggered by security rules in your rules engine<br>
+                        • <strong>Risk Score:</strong> Based on risk keywords found in subject/attachments<br>
+                        • <strong>ML Scores:</strong> Generated by machine learning models<br>
+                        • <strong>Combined Risk:</strong> Security(30%) + Risk(20%) + BasicML(25%) + AdvancedML(25%)
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="flagged" 
+                               {{ 'checked' if recipient.flagged else '' }} id="flagged{{ recipient.id }}">
+                        <label class="form-check-label" for="flagged{{ recipient.id }}">
+                            Flag this recipient as high risk
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Scores</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
 {% endblock %}

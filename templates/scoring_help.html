@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Scoring System Help - Email Guardian{% endblock %}
+
+{% block page_title %}Email Scoring System Help{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-info-circle"></i> Why Are My Scores Zero?</h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">If you're seeing scores of 0 in your email details, here are the most common reasons:</p>
+                
+                <div class="accordion" id="scoringAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#securityRulesInfo">
+                                <i class="fas fa-shield-alt text-danger me-2"></i> Security Score (0.0) - No Security Rules Triggered
+                            </button>
+                        </h2>
+                        <div id="securityRulesInfo" class="accordion-collapse collapse show">
+                            <div class="accordion-body">
+                                <strong>Current Status:</strong> {{ stats.security_rules_count }} active security rules configured<br><br>
+                                
+                                <strong>What triggers Security Score:</strong>
+                                <ul>
+                                    <li>Sender patterns (suspicious domains, external senders)</li>
+                                    <li>Subject line patterns (urgent, suspicious keywords)</li>
+                                    <li>Attachment patterns (executable files, suspicious extensions)</li>
+                                    <li>Recipient patterns (specific users or domains)</li>
+                                </ul>
+                                
+                                {% if stats.example_security_rules %}
+                                <strong>Your current rules:</strong>
+                                <ul class="list-unstyled">
+                                    {% for rule in stats.example_security_rules %}
+                                    <li class="mb-2">
+                                        <span class="badge bg-{{ 'danger' if rule.severity == 'critical' else 'warning' if rule.severity == 'high' else 'info' }}">
+                                            {{ rule.severity.title() }}
+                                        </span>
+                                        {{ rule.name }} - {{ rule.rule_type.title() }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <strong>No security rules configured!</strong> Go to Management → Rules Engine to create security rules.
+                                </div>
+                                {% endif %}
+                                
+                                <strong>How to fix:</strong>
+                                <ol>
+                                    <li>Go to <a href="{{ url_for('rules_engine') }}">Management → Rules Engine</a></li>
+                                    <li>Create rules that match your email patterns</li>
+                                    <li>Use the "Rescore Email" button to re-evaluate</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#riskScoreInfo">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i> Risk Score (0.0) - No Risk Keywords Found
+                            </button>
+                        </h2>
+                        <div id="riskScoreInfo" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <strong>Current Status:</strong> {{ stats.risk_keywords_count }} active risk keywords configured<br><br>
+                                
+                                <strong>What triggers Risk Score:</strong>
+                                <ul>
+                                    <li>Keywords in subject line</li>
+                                    <li>Keywords in attachment names</li>
+                                    <li>Phishing-related terms</li>
+                                    <li>Financial fraud keywords</li>
+                                    <li>Data exfiltration terms</li>
+                                </ul>
+                                
+                                {% if stats.example_risk_keywords %}
+                                <strong>Your current keywords:</strong>
+                                <ul class="list-unstyled">
+                                    {% for keyword in stats.example_risk_keywords %}
+                                    <li class="mb-1">
+                                        <span class="badge bg-secondary">{{ keyword.category }}</span>
+                                        "{{ keyword.keyword }}" (weight: {{ keyword.weight }})
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <strong>No risk keywords configured!</strong> Go to Management → Wordlist Management to add risk keywords.
+                                </div>
+                                {% endif %}
+                                
+                                <strong>How to fix:</strong>
+                                <ol>
+                                    <li>Go to <a href="{{ url_for('wordlist_management') }}">Management → Wordlist Management</a></li>
+                                    <li>Add keywords that appear in suspicious emails</li>
+                                    <li>Set appropriate weights for each keyword</li>
+                                    <li>Use the "Rescore Email" button to re-evaluate</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mlScoreInfo">
+                                <i class="fas fa-robot text-primary me-2"></i> ML Scores (0.0) - Models Need Training
+                            </button>
+                        </h2>
+                        <div id="mlScoreInfo" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <strong>What are ML Scores:</strong>
+                                <ul>
+                                    <li><strong>Basic ML:</strong> Uses Isolation Forest to detect anomalies</li>
+                                    <li><strong>Advanced ML:</strong> Uses Random Forest with network analysis</li>
+                                    <li>Both models learn from your email patterns</li>
+                                </ul>
+                                
+                                <div class="alert alert-info">
+                                    <strong>ML models are automatically trained when you first import data.</strong> 
+                                    If scores are still 0, the models might need more data or retraining.
+                                </div>
+                                
+                                <strong>How to fix:</strong>
+                                <ol>
+                                    <li>Ensure you have processed enough emails (100+ recommended)</li>
+                                    <li>Go to <a href="{{ url_for('ml_model_config') }}">Admin → ML Model Config</a></li>
+                                    <li>Check if models are fitted</li>
+                                    <li>Use "Retrain" buttons to rebuild models</li>
+                                    <li>Return to email details and use "Rescore Email"</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="fas fa-calculator"></i> How Scoring Works</h5>
+            </div>
+            <div class="card-body">
+                <h6>Combined Risk Calculation:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <strong>Formula:</strong><br>
+                            <code>
+                                Combined Score = <br>
+                                &nbsp;&nbsp;Security Score × 30% +<br>
+                                &nbsp;&nbsp;Risk Score × 20% +<br>
+                                &nbsp;&nbsp;Basic ML × 25% +<br>
+                                &nbsp;&nbsp;Advanced ML × 25%
+                            </code>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Risk Levels:</strong>
+                        <ul class="list-unstyled">
+                            <li><span class="badge bg-success">Low</span> 0.0 - 2.9</li>
+                            <li><span class="badge bg-info">Medium</span> 3.0 - 4.9</li>
+                            <li><span class="badge bg-warning">High</span> 5.0 - 6.9</li>
+                            <li><span class="badge bg-danger">Critical</span> 7.0+</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6>Automatic Actions:</h6>
+                <ul>
+                    <li><strong>Flagging:</strong> Recipients with combined score > 5.0 are flagged</li>
+                    <li><strong>Case Generation:</strong> Combined score > 8.0 generates security cases</li>
+                    <li><strong>Manual Override:</strong> You can edit any score manually using the edit button</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-check-circle"></i> Quick Fixes</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('rules_engine') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shield-alt text-danger"></i> Add Security Rules
+                        <small class="d-block text-muted">Create rules to detect threats</small>
+                    </a>
+                    <a href="{{ url_for('wordlist_management') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-list text-warning"></i> Add Risk Keywords  
+                        <small class="d-block text-muted">Define suspicious terms</small>
+                    </a>
+                    <a href="{{ url_for('ml_model_config') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-robot text-primary"></i> Train ML Models
+                        <small class="d-block text-muted">Configure and retrain models</small>
+                    </a>
+                    <a href="{{ url_for('upload_csv') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-upload text-info"></i> Upload More Data
+                        <small class="d-block text-muted">ML needs data to learn</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Your Configuration</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Security Rules</td>
+                        <td><span class="badge bg-{{ 'success' if stats.security_rules_count > 0 else 'danger' }}">{{ stats.security_rules_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Risk Keywords</td>
+                        <td><span class="badge bg-{{ 'success' if stats.risk_keywords_count > 0 else 'danger' }}">{{ stats.risk_keywords_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Whitelisted Senders</td>
+                        <td><span class="badge bg-info">{{ stats.whitelist_senders_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Whitelisted Domains</td>
+                        <td><span class="badge bg-info">{{ stats.whitelist_domains_count }}</span></td>
+                    </tr>
+                </table>
+                
+                {% if stats.security_rules_count == 0 or stats.risk_keywords_count == 0 %}
+                <div class="alert alert-warning mt-3">
+                    <small><strong>Missing Configuration!</strong> Some scoring components are not configured, which explains the zero scores.</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

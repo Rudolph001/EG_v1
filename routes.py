@@ -1231,6 +1231,94 @@ def retrain_advanced_ml():
     
     return redirect(url_for('ml_model_config'))
 
+@app.route('/update-recipient-scores/<int:recipient_id>', methods=['POST'])
+def update_recipient_scores(recipient_id):
+    """Update recipient scores manually"""
+    try:
+        recipient = RecipientRecord.query.get_or_404(recipient_id)
+        
+        # Update scores from form
+        recipient.security_score = float(request.form.get('security_score', 0))
+        recipient.risk_score = float(request.form.get('risk_score', 0))
+        recipient.ml_score = float(request.form.get('ml_score', 0))
+        recipient.advanced_ml_score = float(request.form.get('advanced_ml_score', 0))
+        recipient.flagged = 'flagged' in request.form
+        
+        # Recalculate combined risk level
+        combined_score = (
+            recipient.security_score * 0.3 +
+            recipient.risk_score * 0.2 +
+            recipient.ml_score * 0.25 +
+            recipient.advanced_ml_score * 0.25
+        )
+        
+        # Update flagged status based on combined score if not manually set
+        if combined_score > 5.0:
+            recipient.flagged = True
+        
+        db.session.commit()
+        flash(f'Scores updated successfully for {recipient.recipient}!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating scores: {str(e)}', 'error')
+    
+    return redirect(url_for('email_detail', email_id=recipient.email_id))
+
+@app.route('/rescore-email/<int:email_id>', methods=['POST'])
+def rescore_email(email_id):
+    """Re-run the scoring pipeline for a specific email"""
+    try:
+        from pipeline import EmailProcessingPipeline
+        
+        email = EmailRecord.query.get_or_404(email_id)
+        pipeline = EmailProcessingPipeline()
+        
+        # Re-score all recipients for this email
+        for recipient in email.recipients:
+            # Re-run security rules
+            pipeline._stage_5_security_rules(recipient, email)
+            # Re-run risk keywords
+            pipeline._stage_6_risk_keywords(recipient, email)
+            # Re-run ML analysis
+            pipeline._stage_8_ml_analysis(recipient, email)
+            pipeline._stage_9_advanced_ml(recipient, email)
+            # Re-run case generation
+            pipeline._stage_10_case_generation(recipient, email)
+        
+        db.session.commit()
+        flash('Email rescored successfully! All recipients have been re-evaluated.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error rescoring email: {str(e)}', 'error')
+    
+    return redirect(url_for('email_detail', email_id=email_id))
+
+@app.route('/scoring-help')
+def scoring_help():
+    """Help page explaining the scoring system"""
+    # Get current configuration stats
+    security_rules_count = SecurityRule.query.filter_by(active=True).count()
+    risk_keywords_count = RiskKeyword.query.filter_by(active=True).count()
+    whitelist_senders_count = WhitelistSender.query.filter_by(active=True).count()
+    whitelist_domains_count = WhitelistDomain.query.filter_by(active=True).count()
+    
+    # Get some example rules/keywords for display
+    example_security_rules = SecurityRule.query.filter_by(active=True).limit(3).all()
+    example_risk_keywords = RiskKeyword.query.filter_by(active=True).limit(5).all()
+    
+    stats = {
+        'security_rules_count': security_rules_count,
+        'risk_keywords_count': risk_keywords_count,
+        'whitelist_senders_count': whitelist_senders_count,
+        'whitelist_domains_count': whitelist_domains_count,
+        'example_security_rules': example_security_rules,
+        'example_risk_keywords': example_risk_keywords
+    }
+    
+    return render_template('scoring_help.html', stats=stats, title='Scoring System Help')
+
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""
