@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Processed Emails - Email Guardian{% endblock %}
@@ -22,6 +21,7 @@
                         <th>Recipients</th>
                         <th>Attachments</th>
                         <th>Leaver</th>
+                        <th>Severity</th>
                         <th>Processed</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -58,7 +58,17 @@
                                 </span>
                             {% endif %}
                         </td>
-                        <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
+                        <td>
+                            {% if email.cases %}
+                                {% set case = email.cases[0] %}
+                                <span class="badge bg-{{ 'danger' if case.severity == 'critical' else 'warning' if case.severity == 'high' else 'info' if case.severity == 'medium' else 'secondary' }}">
+                                    {{ case.severity.title() }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at else 'Not processed' }}</td>
                         <td>
                             <span class="badge bg-{{ 'success' if email.pipeline_status == 'completed' else 'warning' if email.pipeline_status == 'processing' else 'danger' }}">
                                 {{ email.pipeline_status.title() if email.pipeline_status else 'Unknown' }}
@@ -74,7 +84,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Pagination -->
         {% if emails.pages > 1 %}
         <nav aria-label="Emails pagination">
@@ -84,7 +94,7 @@
                     <a class="page-link" href="{{ url_for('emails', page=emails.prev_num) }}">Previous</a>
                 </li>
                 {% endif %}
-                
+
                 {% for page_num in emails.iter_pages() %}
                     {% if page_num %}
                         {% if page_num != emails.page %}
@@ -102,7 +112,7 @@
                     </li>
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if emails.has_next %}
                 <li class="page-item">
                     <a class="page-link" href="{{ url_for('emails', page=emails.next_num) }}">Next</a>
@@ -111,7 +121,7 @@
             </ul>
         </nav>
         {% endif %}
-        
+
         {% else %}
         <div class="text-center py-5">
             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -128,9 +138,9 @@
 $(document).ready(function() {
     $('#emailsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 6, "desc" ]], // Sort by processed date (now column 6)
+        "order": [[ 7, "desc" ]], // Sort by processed date (now column 7)
         "columnDefs": [
-            { "orderable": false, "targets": 8 } // Disable sorting on actions column (now column 8)
+            { "orderable": false, "targets": 9 } // Disable sorting on actions column (now column 9)
         ]
     });
 });
