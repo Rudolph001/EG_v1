@@ -1553,6 +1553,104 @@ def rule_analysis():
         flash('Error loading rule analysis data', 'error')
         return redirect(url_for('dashboard'))
 
+@app.route('/bulk-action', methods=['POST'])
+def bulk_action():
+    """Handle bulk actions on multiple emails"""
+    try:
+        email_ids = request.form.getlist('email_ids')
+        action = request.form.get('action')
+        
+        if not email_ids or not action:
+            return jsonify({'success': False, 'error': 'Missing email IDs or action'}), 400
+        
+        # Convert string IDs to integers
+        try:
+            email_ids = [int(email_id) for email_id in email_ids]
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid email ID format'}), 400
+        
+        # Validate action
+        valid_actions = ['flagged', 'escalated', 'cleared']
+        if action not in valid_actions:
+            return jsonify({'success': False, 'error': 'Invalid action'}), 400
+        
+        success_count = 0
+        errors = []
+        
+        for email_id in email_ids:
+            try:
+                email = EmailRecord.query.get(email_id)
+                if not email:
+                    errors.append(f'Email {email_id} not found')
+                    continue
+                
+                # Get or create email state
+                email_state = EmailState.query.filter_by(email_id=email_id).first()
+                if not email_state:
+                    email_state = EmailState(email_id=email_id, current_state='processed')
+                    db.session.add(email_state)
+                
+                # Update state based on action
+                email_state.previous_state = email_state.current_state
+                email_state.current_state = action
+                email_state.moved_by = 'User'  # You can implement user authentication later
+                email_state.moved_at = datetime.utcnow()
+                
+                # Create appropriate event record
+                if action == 'flagged':
+                    flagged_event = FlaggedEvent(
+                        email_id=email_id,
+                        flagged_reason='Bulk action by user',
+                        severity='medium',
+                        flagged_by='User'
+                    )
+                    db.session.add(flagged_event)
+                    
+                elif action == 'escalated':
+                    escalated_event = EscalatedEvent(
+                        email_id=email_id,
+                        escalation_reason='Bulk escalation by user',
+                        priority='medium',
+                        escalated_to='Security Team',
+                        escalated_by='User'
+                    )
+                    db.session.add(escalated_event)
+                    
+                elif action == 'cleared':
+                    cleared_event = ClearedEvent(
+                        email_id=email_id,
+                        cleared_reason='Bulk clearing by user',
+                        cleared_by='User'
+                    )
+                    db.session.add(cleared_event)
+                
+                success_count += 1
+                
+            except Exception as e:
+                errors.append(f'Error processing email {email_id}: {str(e)}')
+                logging.error(f"Error in bulk action for email {email_id}: {str(e)}")
+        
+        # Commit all changes
+        db.session.commit()
+        
+        # Prepare response
+        response = {
+            'success': True,
+            'count': success_count,
+            'total_requested': len(email_ids)
+        }
+        
+        if errors:
+            response['errors'] = errors
+            response['partial_success'] = True
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in bulk action: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""

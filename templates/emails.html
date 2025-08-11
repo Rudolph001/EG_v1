@@ -45,10 +45,36 @@
     </div>
     <div class="card-body">
         {% if emails.items %}
+        <!-- Bulk Actions Toolbar -->
+        <div class="mb-3" id="bulkActionsToolbar" style="display: none;">
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted">
+                    <span id="selectedCount">0</span> email(s) selected
+                </span>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="bulkAction('flagged')">
+                        <i class="fas fa-flag"></i> Move to Flagged
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="bulkAction('escalated')">
+                        <i class="fas fa-exclamation-triangle"></i> Move to Escalation
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="bulkAction('cleared')">
+                        <i class="fas fa-check-circle"></i> Move to Cleared
+                    </button>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">
+                    <i class="fas fa-times"></i> Clear Selection
+                </button>
+            </div>
+        </div>
+        
         <div class="table-responsive">
             <table class="table table-striped" id="emailsTable" style="width: 100%;">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAll" class="form-check-input" title="Select All">
+                        </th>
                         <th style="min-width: 100px;">Email ID</th>
                         <th style="min-width: 150px;">Sender</th>
                         <th style="min-width: 150px;">Subject</th>
@@ -66,6 +92,9 @@
                 <tbody>
                     {% for email in emails.items %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input email-checkbox" value="{{ email.id }}" name="selected_emails">
+                        </td>
                         <td><code>EMAIL-{{ email.id }}</code></td>
                         <td>{{ email.sender }}</td>
                         <td>
@@ -246,20 +275,21 @@ $(document).ready(function() {
         "scrollX": true,
         "autoWidth": false,
         "columnDefs": [
-            { "orderable": false, "targets": 11 }, // Disable sorting on actions column (now column 11)
-            { "searchable": false, "targets": 11 },
-            { "width": "220px", "targets": 11 }, // Set fixed width for actions column
-            { "width": "100px", "targets": 0 }, // Email ID
-            { "width": "150px", "targets": 1 }, // Sender
-            { "width": "150px", "targets": 2 }, // Subject
-            { "width": "80px", "targets": 3 }, // Recipients
-            { "width": "100px", "targets": 4 }, // Attachments
-            { "width": "80px", "targets": 5 }, // Leaver
-            { "width": "120px", "targets": 6 }, // Whitelist Status
-            { "width": "150px", "targets": 7 }, // Risk Keywords
-            { "width": "80px", "targets": 8 }, // Severity
-            { "width": "100px", "targets": 9 }, // Processed
-            { "width": "80px", "targets": 10 } // Status
+            { "orderable": false, "targets": [0, 12] }, // Disable sorting on checkbox and actions columns
+            { "searchable": false, "targets": [0, 12] },
+            { "width": "40px", "targets": 0 }, // Checkbox column
+            { "width": "220px", "targets": 12 }, // Set fixed width for actions column
+            { "width": "100px", "targets": 1 }, // Email ID
+            { "width": "150px", "targets": 2 }, // Sender
+            { "width": "150px", "targets": 3 }, // Subject
+            { "width": "80px", "targets": 4 }, // Recipients
+            { "width": "100px", "targets": 5 }, // Attachments
+            { "width": "80px", "targets": 6 }, // Leaver
+            { "width": "120px", "targets": 7 }, // Whitelist Status
+            { "width": "150px", "targets": 8 }, // Risk Keywords
+            { "width": "80px", "targets": 9 }, // Severity
+            { "width": "100px", "targets": 10 }, // Processed
+            { "width": "80px", "targets": 11 } // Status
         ],
         "initComplete": function () {
             // Add custom filtering
@@ -271,7 +301,7 @@ $(document).ready(function() {
                     
                     // Whitelist filter
                     if (whitelistFilter) {
-                        const whitelistText = data[6].toLowerCase(); // Whitelist Status column
+                        const whitelistText = data[7].toLowerCase(); // Whitelist Status column (adjusted for checkbox)
                         if (whitelistFilter === 'whitelisted' && !whitelistText.includes('whitelisted')) {
                             return false;
                         }
@@ -282,7 +312,7 @@ $(document).ready(function() {
                     
                     // Risk keyword filter
                     if (riskKeywordFilter) {
-                        const riskText = data[7].toLowerCase(); // Risk Keywords column
+                        const riskText = data[8].toLowerCase(); // Risk Keywords column (adjusted for checkbox)
                         if (riskKeywordFilter === 'has-keywords' && riskText.includes('none')) {
                             return false;
                         }
@@ -293,7 +323,7 @@ $(document).ready(function() {
                     
                     // Severity filter
                     if (severityFilter) {
-                        const severityText = data[8].toLowerCase(); // Severity column
+                        const severityText = data[9].toLowerCase(); // Severity column (adjusted for checkbox)
                         if (!severityText.includes(severityFilter.toLowerCase())) {
                             return false;
                         }
@@ -315,6 +345,102 @@ $(document).ready(function() {
         $('#whitelistFilter, #riskKeywordFilter, #severityFilter').val('');
         table.draw();
     });
+    
+    // Bulk selection functionality
+    $('#selectAll').on('change', function() {
+        const isChecked = $(this).is(':checked');
+        $('.email-checkbox:visible').prop('checked', isChecked);
+        updateBulkActionsToolbar();
+    });
+    
+    $(document).on('change', '.email-checkbox', function() {
+        updateBulkActionsToolbar();
+        
+        // Update select all checkbox state
+        const totalVisible = $('.email-checkbox:visible').length;
+        const checkedVisible = $('.email-checkbox:visible:checked').length;
+        
+        $('#selectAll').prop('indeterminate', checkedVisible > 0 && checkedVisible < totalVisible);
+        $('#selectAll').prop('checked', checkedVisible === totalVisible && totalVisible > 0);
+    });
 });
+
+function updateBulkActionsToolbar() {
+    const selectedCount = $('.email-checkbox:checked').length;
+    $('#selectedCount').text(selectedCount);
+    
+    if (selectedCount > 0) {
+        $('#bulkActionsToolbar').show();
+    } else {
+        $('#bulkActionsToolbar').hide();
+    }
+}
+
+function clearSelection() {
+    $('.email-checkbox').prop('checked', false);
+    $('#selectAll').prop('checked', false).prop('indeterminate', false);
+    updateBulkActionsToolbar();
+}
+
+function bulkAction(action) {
+    const selectedEmails = [];
+    $('.email-checkbox:checked').each(function() {
+        selectedEmails.push($(this).val());
+    });
+    
+    if (selectedEmails.length === 0) {
+        alert('Please select at least one email.');
+        return;
+    }
+    
+    const actionNames = {
+        'flagged': 'Flagged Events',
+        'escalated': 'Escalation',
+        'cleared': 'Cleared Cases'
+    };
+    
+    const actionName = actionNames[action] || action;
+    
+    if (!confirm(`Move ${selectedEmails.length} email(s) to ${actionName}?`)) {
+        return;
+    }
+    
+    // Show loading state
+    const buttons = $('#bulkActionsToolbar button');
+    buttons.prop('disabled', true);
+    
+    // Create form data
+    const formData = new FormData();
+    selectedEmails.forEach(emailId => {
+        formData.append('email_ids', emailId);
+    });
+    formData.append('action', action);
+    
+    // Submit bulk action
+    fetch('/bulk-action', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showAlert(`Successfully moved ${data.count} email(s) to ${actionName}`, 'success');
+            
+            // Reload page to reflect changes
+            window.location.reload();
+        } else {
+            showAlert(`Error: ${data.error}`, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('An error occurred while processing the bulk action.', 'danger');
+    })
+    .finally(() => {
+        // Re-enable buttons
+        buttons.prop('disabled', false);
+    });
+}
 </script>
 {% endblock %}
