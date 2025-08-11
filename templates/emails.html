@@ -81,6 +81,11 @@
                         <th style="min-width: 80px;">Recipients</th>
                         <th style="min-width: 100px;">Attachments</th>
                         <th style="min-width: 80px;">Leaver</th>
+                        <th style="min-width: 100px;">Security Score</th>
+                        <th style="min-width: 100px;">Risk Score</th>
+                        <th style="min-width: 120px;">ML Scores</th>
+                        <th style="min-width: 100px;">Risk Level</th>
+                        <th style="min-width: 80px;">Flagged</th>
                         <th style="min-width: 120px;">Whitelist Status</th>
                         <th style="min-width: 150px;">Matched Risk Keywords</th>
                         <th style="min-width: 80px;">Severity</th>
@@ -120,6 +125,76 @@
                             {% else %}
                                 <span class="badge bg-success">
                                     <i class="fas fa-user-check"></i> Active
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if email.recipients %}
+                                {% set avg_security_score = (email.recipients|map(attribute='security_score')|select|list|sum / email.recipients|map(attribute='security_score')|select|list|length) if email.recipients|map(attribute='security_score')|select|list|length > 0 else 0 %}
+                                <span class="badge bg-{{ 'danger' if avg_security_score >= 7 else 'warning' if avg_security_score >= 5 else 'info' if avg_security_score >= 3 else 'success' }}">
+                                    {{ "%.1f"|format(avg_security_score) }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if email.recipients %}
+                                {% set avg_risk_score = (email.recipients|map(attribute='risk_score')|select|list|sum / email.recipients|map(attribute='risk_score')|select|list|length) if email.recipients|map(attribute='risk_score')|select|list|length > 0 else 0 %}
+                                <span class="badge bg-{{ 'danger' if avg_risk_score >= 7 else 'warning' if avg_risk_score >= 5 else 'info' if avg_risk_score >= 3 else 'success' }}">
+                                    {{ "%.1f"|format(avg_risk_score) }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if email.recipients %}
+                                {% set avg_ml_score = (email.recipients|map(attribute='ml_score')|select|list|sum / email.recipients|map(attribute='ml_score')|select|list|length) if email.recipients|map(attribute='ml_score')|select|list|length > 0 else 0 %}
+                                {% set avg_advanced_ml_score = (email.recipients|map(attribute='advanced_ml_score')|select|list|sum / email.recipients|map(attribute='advanced_ml_score')|select|list|length) if email.recipients|map(attribute='advanced_ml_score')|select|list|length > 0 else 0 %}
+                                <div>
+                                    <small class="d-block">Basic: 
+                                        <span class="badge bg-info">{{ "%.1f"|format(avg_ml_score) }}</span>
+                                    </small>
+                                    <small class="d-block">Advanced: 
+                                        <span class="badge bg-primary">{{ "%.1f"|format(avg_advanced_ml_score) }}</span>
+                                    </small>
+                                </div>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if email.recipients %}
+                                {% set avg_security_score = (email.recipients|map(attribute='security_score')|select|list|sum / email.recipients|map(attribute='security_score')|select|list|length) if email.recipients|map(attribute='security_score')|select|list|length > 0 else 0 %}
+                                {% set avg_risk_score = (email.recipients|map(attribute='risk_score')|select|list|sum / email.recipients|map(attribute='risk_score')|select|list|length) if email.recipients|map(attribute='risk_score')|select|list|length > 0 else 0 %}
+                                {% set avg_ml_score = (email.recipients|map(attribute='ml_score')|select|list|sum / email.recipients|map(attribute='ml_score')|select|list|length) if email.recipients|map(attribute='ml_score')|select|list|length > 0 else 0 %}
+                                {% set avg_advanced_ml_score = (email.recipients|map(attribute='advanced_ml_score')|select|list|sum / email.recipients|map(attribute='advanced_ml_score')|select|list|length) if email.recipients|map(attribute='advanced_ml_score')|select|list|length > 0 else 0 %}
+                                {% set combined_score = (avg_security_score * 0.3 + avg_risk_score * 0.2 + avg_ml_score * 0.25 + avg_advanced_ml_score * 0.25) %}
+                                {% if combined_score >= 8 %}
+                                    <span class="badge bg-danger">Critical</span>
+                                {% elif combined_score >= 6 %}
+                                    <span class="badge bg-warning">High</span>
+                                {% elif combined_score >= 4 %}
+                                    <span class="badge bg-info">Medium</span>
+                                {% elif combined_score >= 2 %}
+                                    <span class="badge bg-success">Low</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">Minimal</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set flagged_recipients = email.recipients|selectattr('flagged', 'equalto', True)|list %}
+                            {% if flagged_recipients|length > 0 %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-flag"></i> {{ flagged_recipients|length }}/{{ email.recipients|length }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> None
                                 </span>
                             {% endif %}
                         </td>
@@ -271,25 +346,30 @@
 $(document).ready(function() {
     const table = $('#emailsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 9, "desc" ]], // Sort by processed date (now column 9)
+        "order": [[ 14, "desc" ]], // Sort by processed date (now column 14)
         "scrollX": true,
         "autoWidth": false,
         "columnDefs": [
-            { "orderable": false, "targets": [0, 12] }, // Disable sorting on checkbox and actions columns
-            { "searchable": false, "targets": [0, 12] },
+            { "orderable": false, "targets": [0, 17] }, // Disable sorting on checkbox and actions columns
+            { "searchable": false, "targets": [0, 17] },
             { "width": "40px", "targets": 0 }, // Checkbox column
-            { "width": "220px", "targets": 12 }, // Set fixed width for actions column
+            { "width": "220px", "targets": 17 }, // Set fixed width for actions column
             { "width": "100px", "targets": 1 }, // Email ID
             { "width": "150px", "targets": 2 }, // Sender
             { "width": "150px", "targets": 3 }, // Subject
             { "width": "80px", "targets": 4 }, // Recipients
             { "width": "100px", "targets": 5 }, // Attachments
             { "width": "80px", "targets": 6 }, // Leaver
-            { "width": "120px", "targets": 7 }, // Whitelist Status
-            { "width": "150px", "targets": 8 }, // Risk Keywords
-            { "width": "80px", "targets": 9 }, // Severity
-            { "width": "100px", "targets": 10 }, // Processed
-            { "width": "80px", "targets": 11 } // Status
+            { "width": "100px", "targets": 7 }, // Security Score
+            { "width": "100px", "targets": 8 }, // Risk Score
+            { "width": "120px", "targets": 9 }, // ML Scores
+            { "width": "100px", "targets": 10 }, // Risk Level
+            { "width": "80px", "targets": 11 }, // Flagged
+            { "width": "120px", "targets": 12 }, // Whitelist Status
+            { "width": "150px", "targets": 13 }, // Risk Keywords
+            { "width": "80px", "targets": 14 }, // Severity
+            { "width": "100px", "targets": 15 }, // Processed
+            { "width": "80px", "targets": 16 } // Status
         ],
         "initComplete": function () {
             // Add custom filtering
@@ -301,7 +381,7 @@ $(document).ready(function() {
                     
                     // Whitelist filter
                     if (whitelistFilter) {
-                        const whitelistText = data[7].toLowerCase(); // Whitelist Status column (adjusted for checkbox)
+                        const whitelistText = data[12].toLowerCase(); // Whitelist Status column (now column 12)
                         if (whitelistFilter === 'whitelisted' && !whitelistText.includes('whitelisted')) {
                             return false;
                         }
@@ -312,7 +392,7 @@ $(document).ready(function() {
                     
                     // Risk keyword filter
                     if (riskKeywordFilter) {
-                        const riskText = data[8].toLowerCase(); // Risk Keywords column (adjusted for checkbox)
+                        const riskText = data[13].toLowerCase(); // Risk Keywords column (now column 13)
                         if (riskKeywordFilter === 'has-keywords' && riskText.includes('none')) {
                             return false;
                         }
@@ -323,7 +403,7 @@ $(document).ready(function() {
                     
                     // Severity filter
                     if (severityFilter) {
-                        const severityText = data[9].toLowerCase(); // Severity column (adjusted for checkbox)
+                        const severityText = data[14].toLowerCase(); // Severity column (now column 14)
                         if (!severityText.includes(severityFilter.toLowerCase())) {
                             return false;
                         }
