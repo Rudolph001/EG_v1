@@ -20,12 +20,34 @@ def allowed_file(filename):
 @app.route('/')
 def dashboard():
     """Main dashboard with analytics"""
-    # Get recent statistics
-    total_emails = EmailRecord.query.count()
-    total_recipients = RecipientRecord.query.count()
-    total_cases = Case.query.count()
-    open_cases = Case.query.filter_by(status='open').count()
-    flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
+    try:
+        # Get recent statistics
+        total_emails = EmailRecord.query.count()
+        total_recipients = RecipientRecord.query.count()
+        total_cases = Case.query.count()
+        open_cases = Case.query.filter_by(status='open').count()
+        flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
+    except Exception as e:
+        logging.error(f"Database query error in dashboard: {str(e)}")
+        # Return dashboard with zero stats if database query fails
+        stats = {
+            'total_emails': 0,
+            'total_recipients': 0,
+            'total_cases': 0,
+            'open_cases': 0,
+            'flagged_recipients': 0,
+            'total_senders': 0,
+            'leaver_senders': 0,
+            'sender_domains': 0,
+            'recent_cases': [],
+            'avg_security_score': 0,
+            'avg_ml_score': 0,
+            'avg_risk_score': 0,
+            'top_risk_senders': [],
+            'top_active_senders': []
+        }
+        flash('Dashboard data temporarily unavailable. Please check database connection.', 'warning')
+        return render_template('dashboard.html', stats=stats)
     
     # Get sender statistics
     total_senders = SenderMetadata.query.count()
