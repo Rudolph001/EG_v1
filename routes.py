@@ -182,12 +182,6 @@ def recipients():
     
     return render_template('recipients.html', recipients=recipients)
 
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error updating case: {str(e)}', 'error')
-    
-    return redirect(url_for('case_detail', case_id=case_id))
-
 @app.route('/reports')
 def reports():
     """Reports dashboard"""
