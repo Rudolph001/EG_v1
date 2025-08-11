@@ -48,25 +48,25 @@ def dashboard():
         }
         flash('Dashboard data temporarily unavailable. Please check database connection.', 'warning')
         return render_template('dashboard.html', stats=stats)
-    
+
     # Get sender statistics
     total_senders = SenderMetadata.query.count()
     leaver_senders = SenderMetadata.query.filter_by(leaver='yes').count()
-    
+
     # Get unique sender domains
     sender_domains = db.session.query(func.count(func.distinct(SenderMetadata.email_domain))).scalar() or 0
-    
+
     # Get recent cases
     recent_cases = Case.query.order_by(Case.created_at.desc()).limit(5).all()
-    
+
     # Get processing statistics for the last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    
+
     # Get average risk scores
     avg_security_score = db.session.query(func.avg(RecipientRecord.security_score)).scalar() or 0
     avg_ml_score = db.session.query(func.avg(RecipientRecord.ml_score)).scalar() or 0
     avg_risk_score = db.session.query(func.avg(RecipientRecord.risk_score)).scalar() or 0
-    
+
     # Get top risk senders (senders with highest average risk scores)
     top_risk_senders = db.session.query(
         EmailRecord.sender,
@@ -75,7 +75,7 @@ def dashboard():
     ).join(RecipientRecord).group_by(EmailRecord.sender).order_by(
         func.avg(RecipientRecord.risk_score).desc()
     ).limit(5).all()
-    
+
     # Get sender activity (top senders by email volume)
     top_active_senders = db.session.query(
         EmailRecord.sender,
@@ -83,7 +83,7 @@ def dashboard():
     ).group_by(EmailRecord.sender).order_by(
         func.count(EmailRecord.id).desc()
     ).limit(5).all()
-    
+
     stats = {
         'total_emails': total_emails,
         'total_recipients': total_recipients,
@@ -100,7 +100,7 @@ def dashboard():
         'top_risk_senders': top_risk_senders,
         'top_active_senders': top_active_senders
     }
-    
+
     return render_template('dashboard.html', stats=stats)
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -110,39 +110,39 @@ def upload_csv():
         if 'file' not in request.files:
             flash('No file selected', 'error')
             return redirect(request.url)
-        
+
         file = request.files['file']
         if file.filename == '':
             flash('No file selected', 'error')
             return redirect(request.url)
-        
+
         if file and file.filename and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
-            
+
             try:
                 # Process the CSV file
                 pipeline = EmailProcessingPipeline()
                 results = pipeline.process_csv(filepath)
-                
+
                 flash(f'Successfully processed {results["total_emails"]} emails with {results["total_recipients"]} recipients', 'success')
-                
+
                 # Clean up uploaded file
                 os.remove(filepath)
-                
+
                 return redirect(url_for('dashboard'))
-                
+
             except Exception as e:
                 logging.error(f"Error processing CSV: {str(e)}")
                 flash(f'Error processing file: {str(e)}', 'error')
                 # Clean up uploaded file
                 if os.path.exists(filepath):
                     os.remove(filepath)
-                
+
         else:
             flash('Invalid file type. Please upload a CSV file.', 'error')
-    
+
     return render_template('upload.html')
 
 @app.route('/cases')
@@ -151,18 +151,18 @@ def cases():
     page = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status', '')
     severity_filter = request.args.get('severity', '')
-    
+
     query = Case.query
-    
+
     if status_filter:
         query = query.filter_by(status=status_filter)
     if severity_filter:
         query = query.filter_by(severity=severity_filter)
-    
+
     cases = query.order_by(Case.created_at.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
-    
+
     return render_template('cases.html', cases=cases, 
                          status_filter=status_filter, severity_filter=severity_filter)
 
@@ -176,26 +176,26 @@ def case_detail(case_id):
 def update_case(case_id):
     """Update case status or assignment"""
     case = Case.query.get_or_404(case_id)
-    
+
     case.status = request.form.get('status', case.status)
     case.assigned_to = request.form.get('assigned_to', case.assigned_to)
-    
+
     if request.form.get('escalate') == 'true':
         case.escalated = True
         case.escalated_at = datetime.utcnow()
-    
+
     if case.status in ['resolved', 'closed']:
         case.resolved_at = datetime.utcnow()
-    
+
     case.updated_at = datetime.utcnow()
-    
+
     try:
         db.session.commit()
         flash('Case updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error updating case: {str(e)}', 'error')
-    
+
     return redirect(url_for('case_detail', case_id=case_id))
 
 
@@ -203,11 +203,11 @@ def update_case(case_id):
 def emails():
     """Display all processed emails"""
     page = request.args.get('page', 1, type=int)
-    
+
     emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
-    
+
     return render_template('emails.html', emails=emails)
 
 @app.route('/emails/<int:email_id>')
@@ -220,11 +220,11 @@ def email_detail(email_id):
 def recipients():
     """Display all recipients"""
     page = request.args.get('page', 1, type=int)
-    
+
     recipients = RecipientRecord.query.order_by(RecipientRecord.created_at.desc()).paginate(
         page=page, per_page=50, error_out=False
     )
-    
+
     return render_template('recipients.html', recipients=recipients)
 
 @app.route('/reports')
@@ -242,12 +242,12 @@ def rules_engine():
 def add_security_rule():
     """Add new security rule with multiple conditions"""
     import json
-    
+
     try:
         # Extract conditions from form data
         conditions = []
         form_data = request.form.to_dict()
-        
+
         # Parse conditions from form
         for key in form_data:
             if key.startswith('edit_conditions[') and key.endswith('][field]'):
@@ -255,7 +255,7 @@ def add_security_rule():
                 field_key = f'edit_conditions[{index}][field]'
                 operator_key = f'edit_conditions[{index}][operator]'
                 value_key = f'edit_conditions[{index}][value]'
-                
+
                 if field_key in form_data and operator_key in form_data:
                     condition = {
                         'field': form_data[field_key],
@@ -269,7 +269,7 @@ def add_security_rule():
                 field_key = f'conditions[{index}][field]'
                 operator_key = f'conditions[{index}][operator]'
                 value_key = f'conditions[{index}][value]'
-                
+
                 if field_key in form_data and operator_key in form_data:
                     condition = {
                         'field': form_data[field_key],
@@ -277,19 +277,19 @@ def add_security_rule():
                         'value': form_data.get(value_key, '')
                     }
                     conditions.append(condition)
-        
+
         # Get logical operator
         logical_operator = request.form.get('edit_logical_operator', request.form.get('logical_operator', 'AND'))
-        
+
         # Create rule pattern as JSON for multiple conditions
         rule_pattern = {
             'conditions': conditions,
             'logical_operator': logical_operator
         }
-        
+
         # For backward compatibility, set rule_type based on first condition
         rule_type = conditions[0]['field'] if conditions else 'custom'
-        
+
         rule = SecurityRule(
             name=request.form['name'],
             description=request.form.get('description', ''),
@@ -298,23 +298,23 @@ def add_security_rule():
             action=request.form.get('action', 'flag'),
             severity=request.form.get('severity', 'medium')
         )
-        
+
         db.session.add(rule)
         db.session.commit()
         flash('Security rule added successfully', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding rule: {str(e)}', 'error')
         logging.error(f"Error adding security rule: {str(e)}")
-    
+
     return redirect(url_for('rules_engine'))
 
 @app.route('/api/rules/<int:rule_id>', methods=['GET'])
 def get_security_rule_api(rule_id):
     """API endpoint to get rule data for editing"""
     rule = SecurityRule.query.get_or_404(rule_id)
-    
+
     import json
     try:
         rule_config = json.loads(rule.pattern)
@@ -328,7 +328,7 @@ def get_security_rule_api(rule_id):
             'value': rule.pattern
         }]
         logical_operator = 'AND'
-    
+
     return jsonify({
         'id': rule.id,
         'name': rule.name,
@@ -343,20 +343,20 @@ def get_security_rule_api(rule_id):
 def update_security_rule_api(rule_id):
     """API endpoint to update rule via JSON"""
     rule = SecurityRule.query.get_or_404(rule_id)
-    
+
     try:
         import json
         data = request.get_json()
-        
+
         conditions = data.get('conditions', [])
         logical_operator = data.get('logical_operator', 'AND')
-        
+
         # Create rule pattern as JSON for multiple conditions
         rule_pattern = {
             'conditions': conditions,
             'logical_operator': logical_operator
         }
-        
+
         # Update rule
         rule.name = data['name']
         rule.description = data.get('description', '')
@@ -364,11 +364,11 @@ def update_security_rule_api(rule_id):
         rule.pattern = json.dumps(rule_pattern)
         rule.action = data.get('action', 'flag')
         rule.severity = data.get('severity', 'medium')
-        
+
         db.session.commit()
-        
+
         return jsonify({'success': True, 'message': 'Rule updated successfully'})
-        
+
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error updating security rule: {str(e)}")
@@ -378,15 +378,15 @@ def update_security_rule_api(rule_id):
 def edit_security_rule(rule_id):
     """Edit existing security rule"""
     rule = SecurityRule.query.get_or_404(rule_id)
-    
+
     if request.method == 'POST':
         import json
-        
+
         try:
             # Extract conditions from form data
             conditions = []
             form_data = request.form.to_dict()
-            
+
             # Parse conditions from form
             for key in form_data:
                 if key.startswith('conditions[') and key.endswith('][field]'):
@@ -394,7 +394,7 @@ def edit_security_rule(rule_id):
                     field_key = f'conditions[{index}][field]'
                     operator_key = f'conditions[{index}][operator]'
                     value_key = f'conditions[{index}][value]'
-                    
+
                     if field_key in form_data and operator_key in form_data:
                         condition = {
                             'field': form_data[field_key],
@@ -402,16 +402,16 @@ def edit_security_rule(rule_id):
                             'value': form_data.get(value_key, '')
                         }
                         conditions.append(condition)
-            
+
             # Get logical operator
             logical_operator = request.form.get('logical_operator', 'AND')
-            
+
             # Create rule pattern as JSON for multiple conditions
             rule_pattern = {
                 'conditions': conditions,
                 'logical_operator': logical_operator
             }
-            
+
             # Update rule
             rule.name = request.form['name']
             rule.description = request.form.get('description', '')
@@ -419,17 +419,17 @@ def edit_security_rule(rule_id):
             rule.pattern = json.dumps(rule_pattern)
             rule.action = request.form.get('action', 'flag')
             rule.severity = request.form.get('severity', 'medium')
-            
+
             db.session.commit()
             flash('Security rule updated successfully', 'success')
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f'Error updating rule: {str(e)}', 'error')
             logging.error(f"Error updating security rule: {str(e)}")
-        
+
         return redirect(url_for('rules_engine'))
-    
+
     # GET request - show edit form
     import json
     try:
@@ -444,7 +444,7 @@ def edit_security_rule(rule_id):
             'value': rule.pattern
         }]
         logical_operator = 'AND'
-    
+
     return jsonify({
         'id': rule.id,
         'name': rule.name,
@@ -459,18 +459,18 @@ def edit_security_rule(rule_id):
 def toggle_security_rule(rule_id):
     """Toggle security rule active status"""
     rule = SecurityRule.query.get_or_404(rule_id)
-    
+
     try:
         rule.active = not rule.active
         db.session.commit()
-        
+
         status = 'activated' if rule.active else 'deactivated'
         flash(f'Security rule {status} successfully', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error toggling rule: {str(e)}', 'error')
-    
+
     return redirect(url_for('rules_engine'))
 
 @app.route('/whitelist-domains')
@@ -486,7 +486,7 @@ def add_whitelist_domain():
         domain=request.form['domain'].lower(),
         description=request.form.get('description', '')
     )
-    
+
     try:
         db.session.add(domain)
         db.session.commit()
@@ -494,7 +494,7 @@ def add_whitelist_domain():
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding domain: {str(e)}', 'error')
-    
+
     return redirect(url_for('whitelist_domains'))
 
 @app.route('/whitelist-senders')
@@ -510,7 +510,7 @@ def add_whitelist_sender():
         email=request.form['email'].lower(),
         description=request.form.get('description', '')
     )
-    
+
     try:
         db.session.add(sender)
         db.session.commit()
@@ -518,7 +518,7 @@ def add_whitelist_sender():
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding sender: {str(e)}', 'error')
-    
+
     return redirect(url_for('whitelist_senders'))
 
 @app.route('/wordlist-management')
@@ -535,7 +535,7 @@ def add_risk_keyword():
         category=request.form['category'],
         weight=float(request.form.get('weight', 1.0))
     )
-    
+
     try:
         db.session.add(keyword)
         db.session.commit()
@@ -543,7 +543,7 @@ def add_risk_keyword():
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding keyword: {str(e)}', 'error')
-    
+
     return redirect(url_for('wordlist_management'))
 
 @app.route('/admin')
@@ -599,13 +599,13 @@ def populate_sample_data():
                 'severity': 'medium'
             }
         ]
-        
+
         for rule_data in sample_rules:
             existing_rule = SecurityRule.query.filter_by(name=rule_data['name']).first()
             if not existing_rule:
                 rule = SecurityRule(**rule_data)
                 db.session.add(rule)
-        
+
         # Add sample risk keywords
         sample_keywords = [
             {'keyword': 'urgent', 'category': 'phishing', 'weight': 2.0},
@@ -616,34 +616,34 @@ def populate_sample_data():
             {'keyword': 'suspended', 'category': 'phishing', 'weight': 2.0},
             {'keyword': 'confidential', 'category': 'data_exfiltration', 'weight': 1.0}
         ]
-        
+
         for keyword_data in sample_keywords:
             existing_keyword = RiskKeyword.query.filter_by(keyword=keyword_data['keyword']).first()
             if not existing_keyword:
                 keyword = RiskKeyword(**keyword_data)
                 db.session.add(keyword)
-        
+
         # Add sample whitelist domains
         sample_domains = [
             {'domain': 'microsoft.com', 'description': 'Microsoft Corporation'},
             {'domain': 'google.com', 'description': 'Google Services'},
             {'domain': 'company.com', 'description': 'Internal company domain'}
         ]
-        
+
         for domain_data in sample_domains:
             existing_domain = WhitelistDomain.query.filter_by(domain=domain_data['domain']).first()
             if not existing_domain:
                 domain = WhitelistDomain(**domain_data)
                 db.session.add(domain)
-        
+
         db.session.commit()
         flash('Sample data populated successfully!', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error populating sample data: {str(e)}', 'error')
         logging.error(f"Error populating sample data: {str(e)}")
-    
+
     return redirect(url_for('admin'))
 
 @app.route('/admin/clear-database', methods=['POST'])
@@ -661,15 +661,15 @@ def clear_database():
         db.session.query(WhitelistDomain).delete()
         db.session.query(WhitelistSender).delete()
         db.session.query(SenderMetadata).delete()
-        
+
         db.session.commit()
         flash('Database cleared successfully! All data has been removed.', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error clearing database: {str(e)}', 'error')
         logging.error(f"Error clearing database: {str(e)}")
-    
+
     return redirect(url_for('admin'))
 
 @app.route('/sender-metadata')
@@ -685,20 +685,20 @@ def sender_metadata():
 def add_sender_metadata():
     """Add or update sender metadata"""
     email = request.form['email'].lower()
-    
+
     # Check if sender already exists
     sender = SenderMetadata.query.filter_by(email=email).first()
-    
+
     if not sender:
         # Extract domain from email
         domain = email.split('@')[1] if '@' in email else ''
-        
+
         sender = SenderMetadata(
             email=email,
             email_domain=domain
         )
         db.session.add(sender)
-    
+
     # Update attributes
     sender.leaver = request.form.get('leaver', '')
     sender.termination = request.form.get('termination', '')
@@ -706,14 +706,14 @@ def add_sender_metadata():
     sender.bunit = request.form.get('bunit', '')
     sender.department = request.form.get('department', '')
     sender.updated_at = datetime.utcnow()
-    
+
     try:
         db.session.commit()
         flash('Sender metadata updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error updating sender metadata: {str(e)}', 'error')
-    
+
     return redirect(url_for('sender_metadata'))
 
 @app.route('/audit')
@@ -729,10 +729,10 @@ def debug_data_counts():
     recipient_count = RecipientRecord.query.count()
     sender_count = SenderMetadata.query.count()
     case_count = Case.query.count()
-    
+
     # Get recent emails
     recent_emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).limit(5).all()
-    
+
     return jsonify({
         'email_count': email_count,
         'recipient_count': recipient_count,
@@ -756,14 +756,14 @@ def dashboard_data():
     severity_counts = db.session.query(
         Case.severity, func.count(Case.id)
     ).group_by(Case.severity).all()
-    
+
     # Create severity data with all categories
     severity_dict = {s[0]: s[1] for s in severity_counts}
     severity_data = {
         'labels': ['Low', 'Medium', 'High', 'Critical'],
         'data': [severity_dict.get(level, 0) for level in severity_order]
     }
-    
+
     # Get processing statistics for the last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     daily_stats = db.session.query(
@@ -772,22 +772,22 @@ def dashboard_data():
     ).filter(EmailRecord.processed_at >= seven_days_ago).group_by(
         func.date(EmailRecord.processed_at)
     ).order_by(func.date(EmailRecord.processed_at)).all()
-    
+
     # Create complete 7-day dataset
     date_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_stats}
     daily_labels = []
     daily_values = []
-    
+
     for i in range(6, -1, -1):
         date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
         daily_labels.append(date)
         daily_values.append(date_dict.get(date, 0))
-    
+
     daily_data = {
         'labels': daily_labels,
         'data': daily_values
     }
-    
+
     # Get case counts for the same period
     daily_case_stats = db.session.query(
         func.date(Case.created_at),
@@ -795,14 +795,14 @@ def dashboard_data():
     ).filter(Case.created_at >= seven_days_ago).group_by(
         func.date(Case.created_at)
     ).order_by(func.date(Case.created_at)).all()
-    
+
     case_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_case_stats}
     case_values = []
-    
+
     for i in range(6, -1, -1):
         date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
         case_values.append(case_dict.get(date, 0))
-    
+
     # Get sender domain distribution
     domain_stats = db.session.query(
         SenderMetadata.email_domain,
@@ -810,12 +810,12 @@ def dashboard_data():
     ).group_by(SenderMetadata.email_domain).order_by(
         func.count(SenderMetadata.id).desc()
     ).limit(10).all()
-    
+
     sender_domain_data = {
         'labels': [d[0] if d[0] else 'Unknown' for d in domain_stats],
         'data': [d[1] for d in domain_stats]
     }
-    
+
     # Get leaver vs active sender distribution
     leaver_stats = db.session.query(
         db.case(
@@ -829,13 +829,13 @@ def dashboard_data():
             else_='Active'
         )
     ).all()
-    
+
     leaver_dict = {s[0]: s[1] for s in leaver_stats}
     sender_status_data = {
         'labels': ['Active', 'Leavers'],
         'data': [leaver_dict.get('Active', 0), leaver_dict.get('Leavers', 0)]
     }
-    
+
     # Get risk distribution
     risk_ranges = [
         ('Low (0-2)', 0, 2),
@@ -843,7 +843,7 @@ def dashboard_data():
         ('High (5-8)', 5, 8),
         ('Critical (8+)', 8, 999)
     ]
-    
+
     risk_data = {'labels': [], 'data': []}
     for label, min_score, max_score in risk_ranges:
         if max_score == 999:
@@ -855,7 +855,7 @@ def dashboard_data():
             ).count()
         risk_data['labels'].append(label)
         risk_data['data'].append(count)
-    
+
     return jsonify({
         'severity_distribution': severity_data,
         'daily_processing': daily_data,
