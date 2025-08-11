@@ -273,12 +273,6 @@ def flagged_events():
             db.exists().where(
                 db.and_(
                     RecipientRecord.email_id == EmailRecord.id,
-                    RecipientRecord.leaver == 'yes'
-                )
-            ),
-            db.exists().where(
-                db.and_(
-                    RecipientRecord.email_id == EmailRecord.id,
                     RecipientRecord.flagged == True
                 )
             )
@@ -1761,14 +1755,19 @@ def dashboard_data():
             'data': [d[1] for d in domain_stats]
         }
 
-        # Get sender status data from recipient records (actual uploaded data)
-        leavers_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).join(
-            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
-        ).filter(RecipientRecord.leaver == 'yes').scalar() or 0
+        # Get sender status data from sender metadata (actual uploaded data)
+        leavers_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).outerjoin(
+            SenderMetadata, EmailRecord.sender == SenderMetadata.email
+        ).filter(SenderMetadata.leaver == 'yes').scalar() or 0
         
-        active_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).join(
-            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
-        ).filter(RecipientRecord.leaver != 'yes').scalar() or 0
+        active_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).outerjoin(
+            SenderMetadata, EmailRecord.sender == SenderMetadata.email
+        ).filter(
+            db.or_(
+                SenderMetadata.leaver != 'yes',
+                SenderMetadata.leaver.is_(None)
+            )
+        ).scalar() or 0
         
         sender_status_data = {
             'labels': ['Active', 'Leavers'],

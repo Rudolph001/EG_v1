@@ -73,11 +73,12 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td><strong>Recipient Info:</strong></td>
+                                    <td><strong>First Recipient Info:</strong></td>
                                     <td>
                                         <span class="badge bg-{{ 'danger' if first_recipient.leaver == 'yes' else 'success' }}">
                                             {{ 'Leaver' if first_recipient.leaver == 'yes' else 'Active' }}
                                         </span>
+                                        <small class="text-muted d-block">Note: Sender leaver status shown above</small>
                                     </td>
                                 </tr>
                                 <tr>

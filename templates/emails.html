@@ -61,8 +61,8 @@
                 <label for="leaverFilter" class="form-label">Leaver Status</label>
                 <select class="form-select form-select-sm" id="leaverFilter">
                     <option value="">All</option>
-                    <option value="has-leaver">Has Leaver Recipients</option>
-                    <option value="no-leaver">No Leaver Recipients</option>
+                    <option value="leaver-sender">Leaver Sender</option>
+                    <option value="active-sender">Active Sender</option>
                 </select>
             </div>
         </div>
@@ -482,10 +482,10 @@ $(document).ready(function() {
                     // Leaver filter (column 6)
                     if (leaverFilter) {
                         const leaverText = data[6].toLowerCase();
-                        if (leaverFilter === 'has-leaver' && !leaverText.includes('leaver')) {
+                        if (leaverFilter === 'leaver-sender' && !leaverText.includes('leaver')) {
                             return false;
                         }
-                        if (leaverFilter === 'no-leaver' && leaverText.includes('leaver')) {
+                        if (leaverFilter === 'active-sender' && leaverText.includes('leaver')) {
                             return false;
                         }
                     }
