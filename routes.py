@@ -1708,10 +1708,10 @@ def dashboard_data():
 
         # Get sender status data
         status_counts = db.session.query(
-            func.case([(SenderMetadata.leaver != '', 'Leavers')], else_='Active'),
+            func.case([(SenderMetadata.leaver == 'yes', 'Leavers')], else_='Active'),
             func.count(SenderMetadata.id)
         ).group_by(
-            func.case([(SenderMetadata.leaver != '', 'Leavers')], else_='Active')
+            func.case([(SenderMetadata.leaver == 'yes', 'Leavers')], else_='Active')
         ).all()
 
         sender_status_data = {
@@ -1765,25 +1765,8 @@ def dashboard_data():
         'data': [d[1] for d in domain_stats]
     }
 
-    # Get leaver vs active sender distribution
-    leaver_stats = db.session.query(
-        db.case(
-            (SenderMetadata.leaver == 'yes', 'Leavers'),
-            else_='Active'
-        ).label('status'),
-        func.count(SenderMetadata.id)
-    ).group_by(
-        db.case(
-            (SenderMetadata.leaver == 'yes', 'Leavers'),
-            else_='Active'
-        )
-    ).all()
-
-    leaver_dict = {s[0]: s[1] for s in leaver_stats}
-    sender_status_data = {
-        'labels': ['Active', 'Leavers'],
-        'data': [leaver_dict.get('Active', 0), leaver_dict.get('Leavers', 0)]
-    }
+    # Use the sender_status_data already calculated above
+    leaver_dict = {s[0]: s[1] for s in status_counts}
 
     # Get risk distribution
     risk_ranges = [
