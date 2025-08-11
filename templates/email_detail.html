@@ -68,8 +68,15 @@
             <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-paperclip"></i> Attachments 
                     {% if email.attachments and email.attachments.strip() %}
-                        {% set attachment_list = email.attachments.split(',') if ',' in email.attachments else [email.attachments] %}
-                        ({{ attachment_list|length }})
+                        {% set attachment_list = email.attachments.replace(',', ';').split(';') if (';' in email.attachments or ',' in email.attachments) else [email.attachments] %}
+                        {% set clean_attachments = [] %}
+                        {% for att in attachment_list %}
+                            {% set clean_att = att.strip() %}
+                            {% if clean_att %}
+                                {% set _ = clean_attachments.append(clean_att) %}
+                            {% endif %}
+                        {% endfor %}
+                        ({{ clean_attachments|length }})
                     {% else %}
                         (0)
                     {% endif %}
@@ -77,7 +84,16 @@
             </div>
             <div class="card-body">
                 {% if email.attachments and email.attachments.strip() %}
-                    {% set attachment_list = email.attachments.split(',') if ',' in email.attachments else [email.attachments] %}
+                    {% set attachment_list = email.attachments.replace(',', ';').split(';') if (';' in email.attachments or ',' in email.attachments) else [email.attachments] %}
+                    {% set clean_attachments = [] %}
+                    {% for att in attachment_list %}
+                        {% set clean_att = att.strip() %}
+                        {% if clean_att %}
+                            {% set _ = clean_attachments.append(clean_att) %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if clean_attachments %}
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -88,36 +104,39 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for attachment in attachment_list %}
-                                    {% set attachment_name = attachment.strip() %}
-                                    {% if attachment_name %}
-                                    <tr>
-                                        <td>
-                                            <i class="fas fa-{{ 'file-pdf' if attachment_name.lower().endswith('.pdf') else 'file-word' if attachment_name.lower().endswith(('.doc', '.docx')) else 'file-excel' if attachment_name.lower().endswith(('.xls', '.xlsx')) else 'file-archive' if attachment_name.lower().endswith(('.zip', '.rar', '.7z')) else 'file-image' if attachment_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) else 'file' }}"></i>
-                                            {{ attachment_name }}
-                                        </td>
-                                        <td>
-                                            {% set file_ext = attachment_name.split('.')[-1].upper() if '.' in attachment_name else 'Unknown' %}
-                                            <span class="badge bg-secondary">{{ file_ext }}</span>
-                                        </td>
-                                        <td>
-                                            {% set risky_extensions = ['exe', 'bat', 'cmd', 'scr', 'vbs', 'js', 'jar', 'com', 'pif'] %}
-                                            {% set suspicious_extensions = ['zip', 'rar', '7z', 'tar', 'gz'] %}
-                                            {% set file_ext_lower = attachment_name.split('.')[-1].lower() if '.' in attachment_name else '' %}
-                                            {% if file_ext_lower in risky_extensions %}
-                                                <span class="badge bg-danger">High Risk</span>
-                                            {% elif file_ext_lower in suspicious_extensions %}
-                                                <span class="badge bg-warning">Medium Risk</span>
-                                            {% else %}
-                                                <span class="badge bg-success">Low Risk</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endif %}
+                                {% for attachment_name in clean_attachments %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-{{ 'file-pdf' if attachment_name.lower().endswith('.pdf') else 'file-word' if attachment_name.lower().endswith(('.doc', '.docx')) else 'file-excel' if attachment_name.lower().endswith(('.xls', '.xlsx')) else 'file-archive' if attachment_name.lower().endswith(('.zip', '.rar', '.7z')) else 'file-image' if attachment_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) else 'file-alt' if attachment_name.lower().endswith(('.txt', '.log')) else 'file-code' if attachment_name.lower().endswith(('.js', '.html', '.css', '.py', '.java')) else 'file' }}"></i>
+                                        {{ attachment_name }}
+                                    </td>
+                                    <td>
+                                        {% set file_ext = attachment_name.split('.')[-1].upper() if '.' in attachment_name else 'Unknown' %}
+                                        <span class="badge bg-secondary">{{ file_ext }}</span>
+                                    </td>
+                                    <td>
+                                        {% set risky_extensions = ['exe', 'bat', 'cmd', 'scr', 'vbs', 'js', 'jar', 'com', 'pif', 'msi', 'dll'] %}
+                                        {% set suspicious_extensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'] %}
+                                        {% set file_ext_lower = attachment_name.split('.')[-1].lower() if '.' in attachment_name else '' %}
+                                        {% if file_ext_lower in risky_extensions %}
+                                            <span class="badge bg-danger">High Risk</span>
+                                        {% elif file_ext_lower in suspicious_extensions %}
+                                            <span class="badge bg-warning">Medium Risk</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Low Risk</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-info-circle text-muted"></i>
+                        <span class="text-muted">No valid attachments found</span>
+                    </div>
+                    {% endif %}
                 {% else %}
                     <div class="text-center py-3">
                         <i class="fas fa-info-circle text-muted"></i>
