@@ -252,9 +252,17 @@
                             <tr>
                                 <th>Whitelist Status</th>
                                 <td>
-                                    <span class="badge bg-success">Whitelisted</span>
-                                    {% if recipient.whitelist_reason %}
-                                    <br><small class="text-muted">{{ recipient.whitelist_reason }}</small>
+                                    {% if recipient.whitelisted %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-shield-alt"></i> Whitelisted
+                                        </span>
+                                        {% if recipient.whitelist_reason %}
+                                        <br><small class="text-muted">{{ recipient.whitelist_reason }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-shield"></i> Not Whitelisted
+                                        </span>
                                     {% endif %}
                                 </td>
                             </tr>

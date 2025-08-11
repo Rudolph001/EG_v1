@@ -125,7 +125,7 @@
                         </td>
                         <td>
                             {% set whitelisted_recipients = email.recipients|selectattr('whitelisted', 'equalto', True)|list %}
-                            {% if whitelisted_recipients %}
+                            {% if whitelisted_recipients|length > 0 %}
                                 <span class="badge bg-success">
                                     <i class="fas fa-shield-alt"></i> Whitelisted
                                 </span>
