@@ -14,7 +14,7 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                            Total Flagged Events
+                            Total Flagged Senders
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">
                             {{ stats.total_flagged }}
@@ -34,14 +34,14 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            High Risk Events
+                            Leaver Sender Events
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">
                             {{ stats.high_risk_count }}
                         </div>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        <i class="fas fa-user-times fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>
@@ -75,49 +75,52 @@
         <h5 class="mb-0"><i class="fas fa-flag"></i> Flagged Events</h5>
     </div>
     <div class="card-body">
-        {% if flagged_recipients.items %}
+        {% if flagged_emails.items %}
         <div class="table-responsive">
             <table class="table table-striped" id="flaggedEventsTable">
                 <thead>
                     <tr>
                         <th>Event ID</th>
-                        <th>Recipient</th>
                         <th>Sender</th>
+                        <th>Sender Status</th>
                         <th>Subject</th>
-                        <th>Risk Score</th>
-                        <th>Security Score</th>
+                        <th>Recipients</th>
+                        <th>Department</th>
                         <th>Flagged Date</th>
-                        <th>Status</th>
+                        <th>Risk Level</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for recipient, email in flagged_recipients.items %}
+                    {% for email, sender_metadata in flagged_emails.items %}
                     <tr>
-                        <td><code>FLAG-{{ recipient.id }}</code></td>
-                        <td>{{ recipient.recipient }}</td>
+                        <td><code>FLAG-{{ email.id }}</code></td>
                         <td>{{ email.sender }}</td>
+                        <td>
+                            {% if sender_metadata.leaver == 'yes' %}
+                                <span class="badge bg-danger">Leaver</span>
+                            {% else %}
+                                <span class="badge bg-success">Active</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="text-truncate" style="max-width: 200px; display: inline-block;" title="{{ email.subject or 'No Subject' }}">
                                 {{ email.subject or 'No Subject' }}
                             </span>
                         </td>
                         <td>
-                            <span class="badge bg-{{ 'danger' if recipient.risk_score >= 7 else 'warning' if recipient.risk_score >= 5 else 'info' }}">
-                                {{ "%.1f"|format(recipient.risk_score) }}
-                            </span>
+                            <span class="badge bg-info">{{ email.recipients|length if email.recipients else 0 }}</span>
                         </td>
+                        <td>{{ sender_metadata.department or 'N/A' }}</td>
+                        <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
                         <td>
-                            <span class="badge bg-{{ 'danger' if recipient.security_score >= 7 else 'warning' if recipient.security_score >= 5 else 'info' }}">
-                                {{ "%.1f"|format(recipient.security_score) }}
-                            </span>
-                        </td>
-                        <td>{{ recipient.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>
-                            {% if recipient.case_generated %}
-                                <span class="badge bg-warning">Case Generated</span>
+                            {% if sender_metadata.leaver == 'yes' %}
+                                <span class="badge bg-danger">Critical</span>
                             {% else %}
-                                <span class="badge bg-info">Under Review</span>
+                                {% set avg_risk = email.recipients|map(attribute='risk_score')|list|sum / (email.recipients|length) if email.recipients else 0 %}
+                                <span class="badge bg-{{ 'danger' if avg_risk >= 7 else 'warning' if avg_risk >= 5 else 'info' }}">
+                                    {{ "%.1f"|format(avg_risk) }}
+                                </span>
                             {% endif %}
                         </td>
                         <td>
@@ -125,7 +128,7 @@
                                 <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Email Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                {% if recipient.case_generated %}
+                                {% if email.cases %}
                                     {% for case in email.cases %}
                                     <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-warning btn-sm" title="View Case">
                                         <i class="fas fa-exclamation-triangle"></i>
@@ -141,18 +144,18 @@
         </div>
         
         <!-- Pagination -->
-        {% if flagged_recipients.pages > 1 %}
+        {% if flagged_emails.pages > 1 %}
         <nav aria-label="Flagged events pagination">
             <ul class="pagination justify-content-center">
-                {% if flagged_recipients.has_prev %}
+                {% if flagged_emails.has_prev %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('flagged_events', page=flagged_recipients.prev_num) }}">Previous</a>
+                    <a class="page-link" href="{{ url_for('flagged_events', page=flagged_emails.prev_num) }}">Previous</a>
                 </li>
                 {% endif %}
                 
-                {% for page_num in flagged_recipients.iter_pages() %}
+                {% for page_num in flagged_emails.iter_pages() %}
                     {% if page_num %}
-                        {% if page_num != flagged_recipients.page %}
+                        {% if page_num != flagged_emails.page %}
                         <li class="page-item">
                             <a class="page-link" href="{{ url_for('flagged_events', page=page_num) }}">{{ page_num }}</a>
                         </li>
@@ -168,9 +171,9 @@
                     {% endif %}
                 {% endfor %}
                 
-                {% if flagged_recipients.has_next %}
+                {% if flagged_emails.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('flagged_events', page=flagged_recipients.next_num) }}">Next</a>
+                    <a class="page-link" href="{{ url_for('flagged_events', page=flagged_emails.next_num) }}">Next</a>
                 </li>
                 {% endif %}
             </ul>

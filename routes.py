@@ -229,22 +229,45 @@ def recipients():
 
 @app.route('/flagged-events')
 def flagged_events():
-    """Display flagged recipients and emails"""
+    """Display flagged sender events"""
     page = request.args.get('page', 1, type=int)
     
-    # Get flagged recipients with their emails
-    flagged_recipients = db.session.query(RecipientRecord, EmailRecord).join(
-        EmailRecord, RecipientRecord.email_id == EmailRecord.id
-    ).filter(RecipientRecord.flagged == True).order_by(
-        RecipientRecord.created_at.desc()
-    ).paginate(page=page, per_page=20, error_out=False)
+    # Get emails from flagged senders (leavers, high-risk senders, etc.)
+    flagged_emails = db.session.query(EmailRecord, SenderMetadata).join(
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(
+        db.or_(
+            SenderMetadata.leaver == 'yes',  # Leaver senders
+            db.exists().where(
+                db.and_(
+                    RecipientRecord.email_id == EmailRecord.id,
+                    RecipientRecord.flagged == True
+                )
+            )  # Emails with flagged recipients
+        )
+    ).order_by(EmailRecord.processed_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
     
     # Get summary statistics
-    total_flagged = RecipientRecord.query.filter_by(flagged=True).count()
-    high_risk_count = RecipientRecord.query.filter(
-        RecipientRecord.flagged == True,
-        RecipientRecord.risk_score >= 7.0
+    total_flagged = db.session.query(EmailRecord).join(
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(
+        db.or_(
+            SenderMetadata.leaver == 'yes',
+            db.exists().where(
+                db.and_(
+                    RecipientRecord.email_id == EmailRecord.id,
+                    RecipientRecord.flagged == True
+                )
+            )
+        )
     ).count()
+    
+    # Count high-risk flagged events (leaver senders)
+    high_risk_count = db.session.query(EmailRecord).join(
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(SenderMetadata.leaver == 'yes').count()
     
     stats = {
         'total_flagged': total_flagged,
@@ -253,7 +276,7 @@ def flagged_events():
     }
     
     return render_template('flagged_events.html', 
-                         flagged_recipients=flagged_recipients, 
+                         flagged_emails=flagged_emails, 
                          stats=stats)
 
 @app.route('/reports')
