@@ -214,6 +214,7 @@ def emails():
     page = request.args.get('page', 1, type=int)
 
     # Only show emails that are in 'processed' state (or have no state set)
+    # Also eagerly load recipients to access rule matching data
     emails = db.session.query(EmailRecord).outerjoin(
         EmailState, EmailRecord.id == EmailState.email_id
     ).filter(
@@ -221,6 +222,8 @@ def emails():
             EmailState.current_state == 'processed',
             EmailState.current_state == None
         )
+    ).options(
+        db.joinedload(EmailRecord.recipients)
     ).order_by(EmailRecord.processed_at.desc()).paginate(
         page=page, per_page=20, error_out=False
     )

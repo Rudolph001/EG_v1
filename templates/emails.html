@@ -8,6 +8,40 @@
 <div class="card shadow">
     <div class="card-header">
         <h5 class="mb-0"><i class="fas fa-envelope"></i> All Processed Emails</h5>
+        
+        <!-- Filters -->
+        <div class="row mt-3">
+            <div class="col-md-3">
+                <label for="whitelistFilter" class="form-label">Whitelist Status</label>
+                <select class="form-select form-select-sm" id="whitelistFilter">
+                    <option value="">All</option>
+                    <option value="whitelisted">Whitelisted</option>
+                    <option value="not-whitelisted">Not Whitelisted</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="riskKeywordFilter" class="form-label">Risk Keywords</label>
+                <select class="form-select form-select-sm" id="riskKeywordFilter">
+                    <option value="">All</option>
+                    <option value="has-keywords">Has Risk Keywords</option>
+                    <option value="no-keywords">No Risk Keywords</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="severityFilter" class="form-label">Severity</label>
+                <select class="form-select form-select-sm" id="severityFilter">
+                    <option value="">All</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="normal">Normal</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-secondary btn-sm mt-4" id="clearFilters">Clear Filters</button>
+            </div>
+        </div>
     </div>
     <div class="card-body">
         {% if emails.items %}
@@ -21,6 +55,8 @@
                         <th>Recipients</th>
                         <th>Attachments</th>
                         <th>Leaver</th>
+                        <th>Whitelist Status</th>
+                        <th>Matched Risk Keywords</th>
                         <th>Severity</th>
                         <th>Processed</th>
                         <th>Status</th>
@@ -56,6 +92,41 @@
                                 <span class="badge bg-success">
                                     <i class="fas fa-user-check"></i> Active
                                 </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set whitelisted_recipients = email.recipients|selectattr('whitelisted', 'equalto', True)|list %}
+                            {% if whitelisted_recipients %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-shield-alt"></i> Whitelisted
+                                </span>
+                                {% if whitelisted_recipients[0].whitelist_reason %}
+                                    <br><small class="text-muted">{{ whitelisted_recipients[0].whitelist_reason }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-shield"></i> Not Whitelisted
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set all_risk_keywords = [] %}
+                            {% for recipient in email.recipients %}
+                                {% if recipient.matched_risk_keywords %}
+                                    {% set _ = all_risk_keywords.extend(recipient.matched_risk_keywords) %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if all_risk_keywords %}
+                                {% set unique_keywords = all_risk_keywords|map(attribute='keyword')|unique|list %}
+                                {% for keyword in unique_keywords[:3] %}
+                                    <span class="badge bg-warning me-1">{{ keyword }}</span>
+                                {% endfor %}
+                                {% if unique_keywords|length > 3 %}
+                                    <span class="text-muted">+{{ unique_keywords|length - 3 }} more</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-light text-dark">None</span>
                             {% endif %}
                         </td>
                         <td>
@@ -169,12 +240,66 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    $('#emailsTable').DataTable({
+    const table = $('#emailsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 7, "desc" ]], // Sort by processed date (now column 7)
+        "order": [[ 9, "desc" ]], // Sort by processed date (now column 9)
         "columnDefs": [
-            { "orderable": false, "targets": 9 } // Disable sorting on actions column (now column 9)
-        ]
+            { "orderable": false, "targets": 11 }, // Disable sorting on actions column (now column 11)
+            { "searchable": false, "targets": 11 }
+        ],
+        "initComplete": function () {
+            // Add custom filtering
+            $.fn.dataTable.ext.search.push(
+                function (settings, data, dataIndex) {
+                    const whitelistFilter = $('#whitelistFilter').val();
+                    const riskKeywordFilter = $('#riskKeywordFilter').val();
+                    const severityFilter = $('#severityFilter').val();
+                    
+                    // Whitelist filter
+                    if (whitelistFilter) {
+                        const whitelistText = data[6].toLowerCase(); // Whitelist Status column
+                        if (whitelistFilter === 'whitelisted' && !whitelistText.includes('whitelisted')) {
+                            return false;
+                        }
+                        if (whitelistFilter === 'not-whitelisted' && whitelistText.includes('whitelisted')) {
+                            return false;
+                        }
+                    }
+                    
+                    // Risk keyword filter
+                    if (riskKeywordFilter) {
+                        const riskText = data[7].toLowerCase(); // Risk Keywords column
+                        if (riskKeywordFilter === 'has-keywords' && riskText.includes('none')) {
+                            return false;
+                        }
+                        if (riskKeywordFilter === 'no-keywords' && !riskText.includes('none')) {
+                            return false;
+                        }
+                    }
+                    
+                    // Severity filter
+                    if (severityFilter) {
+                        const severityText = data[8].toLowerCase(); // Severity column
+                        if (!severityText.includes(severityFilter.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                }
+            );
+        }
+    });
+    
+    // Filter event handlers
+    $('#whitelistFilter, #riskKeywordFilter, #severityFilter').on('change', function () {
+        table.draw();
+    });
+    
+    // Clear filters
+    $('#clearFilters').on('click', function () {
+        $('#whitelistFilter, #riskKeywordFilter, #severityFilter').val('');
+        table.draw();
     });
 });
 </script>
