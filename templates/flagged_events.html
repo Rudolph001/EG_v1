@@ -97,7 +97,19 @@
                         <td><code>FLAG-{{ email.id }}</code></td>
                         <td>{{ email.sender }}</td>
                         <td>
-                            {% if sender_metadata.leaver == 'yes' %}
+                            {% set is_leaver = false %}
+                            {% if sender_metadata and sender_metadata.leaver == 'yes' %}
+                                {% set is_leaver = true %}
+                            {% elif email.recipients %}
+                                {% for recipient in email.recipients %}
+                                    {% if recipient.leaver == 'yes' %}
+                                        {% set is_leaver = true %}
+                                        {% break %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if is_leaver %}
                                 <span class="badge bg-danger">Leaver</span>
                             {% else %}
                                 <span class="badge bg-success">Active</span>
@@ -111,10 +123,30 @@
                         <td>
                             <span class="badge bg-info">{{ email.recipients|length if email.recipients else 0 }}</span>
                         </td>
-                        <td>{{ sender_metadata.department or 'N/A' }}</td>
+                        <td>
+                            {% if sender_metadata and sender_metadata.department %}
+                                {{ sender_metadata.department }}
+                            {% elif email.recipients and email.recipients[0].department %}
+                                {{ email.recipients[0].department }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
                         <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
                         <td>
-                            {% if sender_metadata.leaver == 'yes' %}
+                            {% set is_leaver = false %}
+                            {% if sender_metadata and sender_metadata.leaver == 'yes' %}
+                                {% set is_leaver = true %}
+                            {% elif email.recipients %}
+                                {% for recipient in email.recipients %}
+                                    {% if recipient.leaver == 'yes' %}
+                                        {% set is_leaver = true %}
+                                        {% break %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if is_leaver %}
                                 <span class="badge bg-danger">Critical</span>
                             {% else %}
                                 {% set avg_risk = email.recipients|map(attribute='risk_score')|list|sum / (email.recipients|length) if email.recipients else 0 %}
