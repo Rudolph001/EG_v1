@@ -1,0 +1,276 @@
+
+{% extends "base.html" %}
+
+{% block title %}Email Details - Email Guardian{% endblock %}
+
+{% block page_title %}Email Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Email Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-envelope"></i> Email Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Email ID:</strong></td>
+                                <td><code>EMAIL-{{ email.id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sender:</strong></td>
+                                <td>{{ email.sender }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Subject:</strong></td>
+                                <td>{{ email.subject or 'No Subject' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Timestamp:</strong></td>
+                                <td>{{ email.timestamp.strftime('%Y-%m-%d %H:%M:%S') if email.timestamp }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Recipients:</strong></td>
+                                <td>{{ email.recipients|length if email.recipients else 0 }} recipients</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Attachments:</strong></td>
+                                <td>{{ email.attachments or 'None' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Processing Status:</strong></td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if email.pipeline_status == 'completed' else 'warning' if email.pipeline_status == 'processing' else 'danger' }}">
+                                        {{ email.pipeline_status.title() if email.pipeline_status else 'Unknown' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Processed At:</strong></td>
+                                <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M:%S') if email.processed_at else 'Not processed' }}</td>
+                            </tr>
+                            {% if email.recipients %}
+                                {% set first_recipient = email.recipients[0] %}
+                                <tr>
+                                    <td><strong>Leaver Status:</strong></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if first_recipient.leaver == 'yes' else 'success' }}">
+                                            {{ 'Leaver' if first_recipient.leaver == 'yes' else 'Active' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Department:</strong></td>
+                                    <td>{{ first_recipient.department or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Business Unit:</strong></td>
+                                    <td>{{ first_recipient.bunit or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Policy Name:</strong></td>
+                                    <td>{{ first_recipient.policy_name or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Justifications:</strong></td>
+                                    <td>{{ first_recipient.justifications or 'N/A' }}</td>
+                                </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attachments List -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-paperclip"></i> Attachments 
+                    {% if email.attachments and email.attachments.strip() %}
+                        {% set attachment_list = email.attachments.replace(',', ';').split(';') if (';' in email.attachments or ',' in email.attachments) else [email.attachments] %}
+                        {% set clean_attachments = [] %}
+                        {% for att in attachment_list %}
+                            {% set clean_att = att.strip() %}
+                            {% if clean_att %}
+                                {% set _ = clean_attachments.append(clean_att) %}
+                            {% endif %}
+                        {% endfor %}
+                        ({{ clean_attachments|length }})
+                    {% else %}
+                        (0)
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if email.attachments and email.attachments.strip() %}
+                    {% set attachment_list = email.attachments.replace(',', ';').split(';') if (';' in email.attachments or ',' in email.attachments) else [email.attachments] %}
+                    {% set clean_attachments = [] %}
+                    {% for att in attachment_list %}
+                        {% set clean_att = att.strip() %}
+                        {% if clean_att %}
+                            {% set _ = clean_attachments.append(clean_att) %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if clean_attachments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Type</th>
+                                    <th>Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attachment_name in clean_attachments %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-{{ 'file-pdf' if attachment_name.lower().endswith('.pdf') else 'file-word' if attachment_name.lower().endswith(('.doc', '.docx')) else 'file-excel' if attachment_name.lower().endswith(('.xls', '.xlsx')) else 'file-archive' if attachment_name.lower().endswith(('.zip', '.rar', '.7z')) else 'file-image' if attachment_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')) else 'file-alt' if attachment_name.lower().endswith(('.txt', '.log')) else 'file-code' if attachment_name.lower().endswith(('.js', '.html', '.css', '.py', '.java')) else 'file' }}"></i>
+                                        {{ attachment_name }}
+                                    </td>
+                                    <td>
+                                        {% set file_ext = attachment_name.split('.')[-1].upper() if '.' in attachment_name else 'Unknown' %}
+                                        <span class="badge bg-secondary">{{ file_ext }}</span>
+                                    </td>
+                                    <td>
+                                        {% set risky_extensions = ['exe', 'bat', 'cmd', 'scr', 'vbs', 'js', 'jar', 'com', 'pif', 'msi', 'dll'] %}
+                                        {% set suspicious_extensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'] %}
+                                        {% set file_ext_lower = attachment_name.split('.')[-1].lower() if '.' in attachment_name else '' %}
+                                        {% if file_ext_lower in risky_extensions %}
+                                            <span class="badge bg-danger">High Risk</span>
+                                        {% elif file_ext_lower in suspicious_extensions %}
+                                            <span class="badge bg-warning">Medium Risk</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Low Risk</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-info-circle text-muted"></i>
+                        <span class="text-muted">No valid attachments found</span>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-info-circle text-muted"></i>
+                        <span class="text-muted">No attachments found for this email</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recipients List -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-users"></i> Recipients ({{ email.recipients|length if email.recipients else 0 }})</h5>
+            </div>
+            <div class="card-body">
+                {% if email.recipients %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Recipient</th>
+                                <th>Security Score</th>
+                                <th>Risk Score</th>
+                                <th>Flagged</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for recipient in email.recipients %}
+                            <tr>
+                                <td>{{ recipient.recipient }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if recipient.security_score > 5 else 'warning' if recipient.security_score > 3 else 'success' }}">
+                                        {{ "%.1f"|format(recipient.security_score) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if recipient.risk_score > 5 else 'warning' if recipient.risk_score > 3 else 'success' }}">
+                                        {{ "%.1f"|format(recipient.risk_score) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if recipient.flagged %}
+                                    <i class="fas fa-flag text-danger"></i>
+                                    {% else %}
+                                    <i class="fas fa-check text-success"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-info-circle text-muted"></i>
+                    <span class="text-muted">No recipients found for this email</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('emails') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Emails
+                    </a>
+                    {% if email.cases %}
+                    {% for case in email.cases %}
+                    <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-exclamation-triangle"></i> View Case {{ case.id }}
+                    </a>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if email.cases %}
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Related Cases</h5>
+            </div>
+            <div class="card-body">
+                {% for case in email.cases %}
+                <div class="alert alert-{{ 'danger' if case.severity == 'critical' else 'warning' if case.severity == 'high' else 'info' }} mb-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ case.title }}</strong>
+                            <br>
+                            <small>{{ case.case_type.replace('_', ' ').title() }} - {{ case.severity.title() }}</small>
+                        </div>
+                        <span class="badge bg-{{ 'danger' if case.status == 'open' else 'warning' if case.status == 'investigating' else 'success' }}">
+                            {{ case.status.title() }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
