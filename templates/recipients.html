@@ -1,0 +1,130 @@
+
+{% extends "base.html" %}
+
+{% block title %}Recipients - Email Guardian{% endblock %}
+
+{% block page_title %}Recipients{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-users"></i> All Recipients</h5>
+    </div>
+    <div class="card-body">
+        {% if recipients.items %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="recipientsTable">
+                <thead>
+                    <tr>
+                        <th>Recipient ID</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Security Score</th>
+                        <th>ML Score</th>
+                        <th>Risk Score</th>
+                        <th>Flagged</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recipient in recipients.items %}
+                    <tr>
+                        <td><code>RCP-{{ recipient.id }}</code></td>
+                        <td>{{ recipient.recipient }}</td>
+                        <td>{{ recipient.recipient_department or 'N/A' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if recipient.leaver == 'yes' else 'success' }}">
+                                {{ 'Leaver' if recipient.leaver == 'yes' else 'Active' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if recipient.security_score > 5 else 'warning' if recipient.security_score > 3 else 'success' }}">
+                                {{ "%.1f"|format(recipient.security_score) }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if recipient.ml_score > 5 else 'warning' if recipient.ml_score > 3 else 'info' }}">
+                                {{ "%.1f"|format(recipient.ml_score) }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if recipient.risk_score > 5 else 'warning' if recipient.risk_score > 3 else 'success' }}">
+                                {{ "%.1f"|format(recipient.risk_score) }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if recipient.flagged %}
+                            <i class="fas fa-flag text-danger"></i>
+                            {% else %}
+                            <i class="fas fa-check text-success"></i>
+                            {% endif %}
+                        </td>
+                        <td>{{ recipient.created_at.strftime('%Y-%m-%d %H:%M') if recipient.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if recipients.pages > 1 %}
+        <nav aria-label="Recipients pagination">
+            <ul class="pagination justify-content-center">
+                {% if recipients.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('recipients', page=recipients.prev_num) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in recipients.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != recipients.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('recipients', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if recipients.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('recipients', page=recipients.next_num) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h5>No Recipients Found</h5>
+            <p class="text-muted">No recipients have been processed yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#recipientsTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 8, "desc" ]], // Sort by created date
+        "columnDefs": [
+            { "orderable": false, "targets": [7] } // Disable sorting on flagged column
+        ]
+    });
+});
+</script>
+{% endblock %}
