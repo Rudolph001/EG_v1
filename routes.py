@@ -1738,12 +1738,12 @@ def dashboard_data():
             'data': daily_values
         }
 
-        # Get sender domain stats
+        # Get sender domain stats from actual email data
         sender_domains = db.session.query(
-            SenderMetadata.email_domain,
-            func.count(SenderMetadata.id)
-        ).group_by(SenderMetadata.email_domain).order_by(
-            func.count(SenderMetadata.id).desc()
+            func.split_part(EmailRecord.sender, '@', 2).label('domain'),
+            func.count(func.distinct(EmailRecord.sender))
+        ).group_by(func.split_part(EmailRecord.sender, '@', 2)).order_by(
+            func.count(func.distinct(EmailRecord.sender)).desc()
         ).limit(10).all()
 
         sender_domains_data = {
@@ -1766,12 +1766,12 @@ def dashboard_data():
             date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
             case_values.append(case_dict.get(date, 0))
 
-        # Get sender domain distribution
+        # Get sender domain distribution from actual email data
         domain_stats = db.session.query(
-            SenderMetadata.email_domain,
-            func.count(SenderMetadata.id)
-        ).group_by(SenderMetadata.email_domain).order_by(
-            func.count(SenderMetadata.id).desc()
+            func.split_part(EmailRecord.sender, '@', 2).label('domain'),
+            func.count(func.distinct(EmailRecord.sender))
+        ).group_by(func.split_part(EmailRecord.sender, '@', 2)).order_by(
+            func.count(func.distinct(EmailRecord.sender)).desc()
         ).limit(10).all()
 
         sender_domain_data = {
@@ -1779,9 +1779,14 @@ def dashboard_data():
             'data': [d[1] for d in domain_stats]
         }
 
-        # Get sender status data - simplified query without func.case
-        leavers_count = SenderMetadata.query.filter_by(leaver='yes').count()
-        active_count = SenderMetadata.query.filter(SenderMetadata.leaver != 'yes').count()
+        # Get sender status data from recipient records (actual uploaded data)
+        leavers_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).join(
+            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
+        ).filter(RecipientRecord.leaver == 'yes').scalar() or 0
+        
+        active_count = db.session.query(func.count(func.distinct(EmailRecord.sender))).join(
+            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
+        ).filter(RecipientRecord.leaver != 'yes').scalar() or 0
         
         sender_status_data = {
             'labels': ['Active', 'Leavers'],
