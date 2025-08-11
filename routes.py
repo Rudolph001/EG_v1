@@ -819,13 +819,13 @@ def dashboard_data():
     # Get leaver vs active sender distribution
     leaver_stats = db.session.query(
         db.case(
-            [(SenderMetadata.leaver == 'yes', 'Leavers')],
+            (SenderMetadata.leaver == 'yes', 'Leavers'),
             else_='Active'
         ).label('status'),
         func.count(SenderMetadata.id)
     ).group_by(
         db.case(
-            [(SenderMetadata.leaver == 'yes', 'Leavers')],
+            (SenderMetadata.leaver == 'yes', 'Leavers'),
             else_='Active'
         )
     ).all()
