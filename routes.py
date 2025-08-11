@@ -317,8 +317,109 @@ def flagged_events():
 
 @app.route('/reports')
 def reports():
-    """Reports dashboard"""
-    return render_template('reports.html')
+    """Reports dashboard with real data"""
+    try:
+        # Get threat trends data for the last 4 weeks
+        four_weeks_ago = datetime.utcnow() - timedelta(weeks=4)
+        
+        # Weekly threat detection (cases created)
+        weekly_threats = []
+        weekly_false_positives = []
+        week_labels = []
+        
+        for i in range(4, 0, -1):
+            week_start = datetime.utcnow() - timedelta(weeks=i)
+            week_end = datetime.utcnow() - timedelta(weeks=i-1)
+            week_labels.append(f'Week {5-i}')
+            
+            # Count actual cases/threats for this week
+            threats = Case.query.filter(
+                Case.created_at >= week_start,
+                Case.created_at < week_end
+            ).count()
+            
+            # Count resolved cases as potential false positives
+            false_pos = Case.query.filter(
+                Case.created_at >= week_start,
+                Case.created_at < week_end,
+                Case.status == 'resolved'
+            ).count()
+            
+            weekly_threats.append(threats)
+            weekly_false_positives.append(false_pos)
+        
+        # Risk distribution from actual recipient data
+        risk_low = RecipientRecord.query.filter(RecipientRecord.risk_score < 3.0).count()
+        risk_medium = RecipientRecord.query.filter(
+            RecipientRecord.risk_score >= 3.0,
+            RecipientRecord.risk_score < 7.0
+        ).count()
+        risk_high = RecipientRecord.query.filter(
+            RecipientRecord.risk_score >= 7.0,
+            RecipientRecord.risk_score < 9.0
+        ).count()
+        risk_critical = RecipientRecord.query.filter(RecipientRecord.risk_score >= 9.0).count()
+        
+        # Recent report activity (using actual processing data)
+        recent_activity = []
+        recent_emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).limit(3).all()
+        
+        for email in recent_emails:
+            recent_activity.append({
+                'report': f'Analysis Report - {email.processed_at.strftime("%Y-%m-%d")}',
+                'generated': email.processed_at.strftime("%Y-%m-%d %H:%M"),
+                'status': 'Complete',
+                'email_id': email.id
+            })
+        
+        # Summary statistics
+        total_emails = EmailRecord.query.count()
+        total_cases = Case.query.count()
+        high_risk_cases = Case.query.filter(Case.severity.in_(['high', 'critical'])).count()
+        
+        report_data = {
+            'threat_trends': {
+                'labels': week_labels,
+                'threats': weekly_threats,
+                'false_positives': weekly_false_positives
+            },
+            'risk_distribution': {
+                'low': risk_low,
+                'medium': risk_medium,
+                'high': risk_high,
+                'critical': risk_critical
+            },
+            'recent_activity': recent_activity,
+            'summary': {
+                'total_emails': total_emails,
+                'total_cases': total_cases,
+                'high_risk_cases': high_risk_cases
+            }
+        }
+        
+        return render_template('reports.html', report_data=report_data)
+        
+    except Exception as e:
+        logging.error(f"Error loading reports data: {str(e)}")
+        # Fallback to empty data structure
+        report_data = {
+            'threat_trends': {
+                'labels': ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                'threats': [0, 0, 0, 0],
+                'false_positives': [0, 0, 0, 0]
+            },
+            'risk_distribution': {
+                'low': 0, 'medium': 0, 'high': 0, 'critical': 0
+            },
+            'recent_activity': [],
+            'summary': {
+                'total_emails': 0,
+                'total_cases': 0,
+                'high_risk_cases': 0
+            }
+        }
+        flash('Reports data temporarily unavailable. Please check database connection.', 'warning')
+        return render_template('reports.html', report_data=report_data)
 
 @app.route('/rules-engine')
 def rules_engine():
@@ -996,6 +1097,83 @@ def escalation_dashboard():
     escalated_emails = db.session.query(EmailRecord, SenderMetadata).join(
         EmailState, EmailRecord.id == EmailState.email_id
     ).outerjoin(
+
+
+@app.route('/api/reports-data')
+def reports_data_api():
+    """API endpoint for reports dashboard data"""
+    try:
+        # Get comprehensive reports data
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        
+        # Email processing trends (last 30 days)
+        daily_processing = db.session.query(
+            func.date(EmailRecord.processed_at),
+            func.count(EmailRecord.id)
+        ).filter(
+            EmailRecord.processed_at >= thirty_days_ago
+        ).group_by(func.date(EmailRecord.processed_at)).all()
+        
+        # Case creation trends
+        daily_cases = db.session.query(
+            func.date(Case.created_at),
+            func.count(Case.id)
+        ).filter(
+            Case.created_at >= thirty_days_ago
+        ).group_by(func.date(Case.created_at)).all()
+        
+        # Security rule effectiveness
+        security_rules = SecurityRule.query.filter_by(active=True).all()
+        rule_effectiveness = []
+        
+        for rule in security_rules:
+            # Count cases generated by this rule type
+            cases_generated = Case.query.filter(
+                Case.description.contains(rule.name)
+            ).count()
+            rule_effectiveness.append({
+                'rule_name': rule.name,
+                'cases_generated': cases_generated,
+                'severity': rule.severity
+            })
+        
+        # Top risk senders
+        top_risk_senders = db.session.query(
+            EmailRecord.sender,
+            func.avg(RecipientRecord.risk_score).label('avg_risk'),
+            func.count(EmailRecord.id).label('email_count')
+        ).join(
+            RecipientRecord, EmailRecord.id == RecipientRecord.email_id
+        ).group_by(EmailRecord.sender).having(
+            func.avg(RecipientRecord.risk_score) > 5.0
+        ).order_by(func.avg(RecipientRecord.risk_score).desc()).limit(10).all()
+        
+        # ML model performance
+        basic_ml_flagged = RecipientRecord.query.filter(RecipientRecord.ml_score >= 5.0).count()
+        advanced_ml_flagged = RecipientRecord.query.filter(RecipientRecord.advanced_ml_score >= 5.0).count()
+        
+        return jsonify({
+            'daily_processing': [{'date': str(d[0]), 'count': d[1]} for d in daily_processing],
+            'daily_cases': [{'date': str(d[0]), 'count': d[1]} for d in daily_cases],
+            'rule_effectiveness': rule_effectiveness,
+            'top_risk_senders': [
+                {
+                    'sender': sender[0],
+                    'avg_risk': float(sender[1]) if sender[1] else 0,
+                    'email_count': sender[2]
+                } for sender in top_risk_senders
+            ],
+            'ml_performance': {
+                'basic_ml_flagged': basic_ml_flagged,
+                'advanced_ml_flagged': advanced_ml_flagged
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error loading reports API data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
         SenderMetadata, EmailRecord.sender == SenderMetadata.email
     ).filter(
         EmailState.current_state == 'escalated'

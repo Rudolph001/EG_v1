@@ -142,8 +142,36 @@
         
         <hr>
         
+        <!-- Summary Cards -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5>{{ "{:,}".format(report_data.summary.total_emails) }}</h5>
+                        <p class="mb-0">Total Emails Processed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <h5>{{ "{:,}".format(report_data.summary.total_cases) }}</h5>
+                        <p class="mb-0">Security Cases Generated</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h5>{{ "{:,}".format(report_data.summary.high_risk_cases) }}</h5>
+                        <p class="mb-0">High Risk Cases</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Recent Report Activity -->
-        <h6>Recent Report Activity</h6>
+        <h6>Recent Analysis Reports</h6>
         <div class="table-responsive">
             <table class="table table-sm">
                 <thead>
@@ -151,28 +179,31 @@
                         <th>Report</th>
                         <th>Generated</th>
                         <th>Status</th>
-                        <th>Download</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Executive Summary - August 2025</td>
-                        <td>2025-08-11 09:30</td>
-                        <td><span class="badge bg-success">Complete</span></td>
-                        <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></td>
-                    </tr>
-                    <tr>
-                        <td>Technical Analysis - Q3 2025</td>
-                        <td>2025-08-10 14:15</td>
-                        <td><span class="badge bg-success">Complete</span></td>
-                        <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></td>
-                    </tr>
-                    <tr>
-                        <td>Custom Risk Assessment</td>
-                        <td>2025-08-11 11:45</td>
-                        <td><span class="badge bg-warning">Generating</span></td>
-                        <td><button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-clock"></i></button></td>
-                    </tr>
+                    {% if report_data.recent_activity %}
+                        {% for activity in report_data.recent_activity %}
+                        <tr>
+                            <td>{{ activity.report }}</td>
+                            <td>{{ activity.generated }}</td>
+                            <td><span class="badge bg-success">{{ activity.status }}</span></td>
+                            <td>
+                                <a href="{{ url_for('email_detail', email_id=activity.email_id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                <i class="fas fa-inbox"></i> No reports available. Upload email data to generate reports.
+                            </td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -182,67 +213,107 @@
 
 {% block scripts %}
 <script>
-// Threat Trends Chart
+// Get real data from backend
+const reportData = {{ report_data | tojson }};
+
+// Threat Trends Chart using real data
 const threatCtx = document.getElementById('threatTrendsChart').getContext('2d');
 new Chart(threatCtx, {
     type: 'line',
     data: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        labels: reportData.threat_trends.labels,
         datasets: [{
-            label: 'Threats Detected',
-            data: [12, 19, 8, 15],
+            label: 'Security Cases',
+            data: reportData.threat_trends.threats,
             borderColor: 'rgb(220, 53, 69)',
             backgroundColor: 'rgba(220, 53, 69, 0.1)',
-            tension: 0.4
+            tension: 0.4,
+            fill: true
         }, {
-            label: 'False Positives',
-            data: [3, 5, 2, 4],
+            label: 'Resolved Cases',
+            data: reportData.threat_trends.false_positives,
             borderColor: 'rgb(255, 193, 7)',
             backgroundColor: 'rgba(255, 193, 7, 0.1)',
-            tension: 0.4
+            tension: 0.4,
+            fill: false
         }]
     },
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             title: {
                 display: true,
-                text: 'Threat Detection Trends'
+                text: 'Security Case Trends (Last 4 Weeks)'
+            },
+            legend: {
+                position: 'top'
             }
         },
         scales: {
             y: {
-                beginAtZero: true
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                }
+            },
+            x: {
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                }
             }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     }
 });
 
-// Risk Distribution Chart
+// Risk Distribution Chart using real data
 const riskCtx = document.getElementById('riskDistributionChart').getContext('2d');
 new Chart(riskCtx, {
     type: 'doughnut',
     data: {
         labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical Risk'],
         datasets: [{
-            data: [65, 25, 8, 2],
+            data: [
+                reportData.risk_distribution.low,
+                reportData.risk_distribution.medium,
+                reportData.risk_distribution.high,
+                reportData.risk_distribution.critical
+            ],
             backgroundColor: [
                 'rgba(40, 167, 69, 0.8)',
                 'rgba(255, 193, 7, 0.8)',
                 'rgba(255, 107, 107, 0.8)',
-                'rgba(108, 117, 125, 0.8)'
-            ]
+                'rgba(220, 53, 69, 0.8)'
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
         }]
     },
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             title: {
                 display: true,
-                text: 'Risk Level Distribution'
+                text: 'Risk Level Distribution (All Recipients)'
+            },
+            legend: {
+                position: 'bottom'
             }
         }
     }
 });
+
+// Add refresh functionality
+function refreshReports() {
+    location.reload();
+}
+
+// Auto-refresh every 10 minutes
+setInterval(refreshReports, 600000);
 </script>
 {% endblock %}
