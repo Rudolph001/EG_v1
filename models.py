@@ -15,6 +15,7 @@ class EmailRecord(db.Model):
     # Processing metadata
     processed_at = db.Column(db.DateTime, default=datetime.utcnow)
     pipeline_status = db.Column(db.String(50), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     recipients = db.relationship('RecipientRecord', backref='email', lazy=True, cascade='all, delete-orphan')

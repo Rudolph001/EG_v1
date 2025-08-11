@@ -709,7 +709,7 @@ def debug_data_counts():
     case_count = Case.query.count()
     
     # Get recent emails
-    recent_emails = EmailRecord.query.order_by(EmailRecord.created_at.desc()).limit(5).all()
+    recent_emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).limit(5).all()
     
     return jsonify({
         'email_count': email_count,
@@ -721,7 +721,7 @@ def debug_data_counts():
                 'id': e.id,
                 'sender': e.sender,
                 'subject': e.subject,
-                'created_at': e.created_at.isoformat() if e.created_at else None
+                'processed_at': e.processed_at.isoformat() if e.processed_at else None
             } for e in recent_emails
         ]
     })
@@ -796,13 +796,13 @@ def dashboard_data():
     
     # Get leaver vs active sender distribution
     leaver_stats = db.session.query(
-        func.case(
+        db.case(
             [(SenderMetadata.leaver == 'yes', 'Leavers')],
             else_='Active'
         ).label('status'),
         func.count(SenderMetadata.id)
     ).group_by(
-        func.case(
+        db.case(
             [(SenderMetadata.leaver == 'yes', 'Leavers')],
             else_='Active'
         )
