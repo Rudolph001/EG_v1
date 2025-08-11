@@ -428,6 +428,31 @@ def admin():
     """Admin panel"""
     return render_template('admin.html')
 
+@app.route('/admin/clear-database', methods=['POST'])
+def clear_database():
+    """Clear all data from database tables"""
+    try:
+        # Clear all tables in reverse order to handle foreign key constraints
+        db.session.query(ProcessingLog).delete()
+        db.session.query(Case).delete()
+        db.session.query(RecipientRecord).delete()
+        db.session.query(EmailRecord).delete()
+        db.session.query(SecurityRule).delete()
+        db.session.query(RiskKeyword).delete()
+        db.session.query(ExclusionRule).delete()
+        db.session.query(WhitelistDomain).delete()
+        db.session.query(WhitelistSender).delete()
+        
+        db.session.commit()
+        flash('Database cleared successfully! All data has been removed.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error clearing database: {str(e)}', 'error')
+        logging.error(f"Error clearing database: {str(e)}")
+    
+    return redirect(url_for('admin'))
+
 @app.route('/audit')
 def audit():
     """Audit dashboard"""
