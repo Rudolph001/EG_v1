@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 import pandas as pd
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.utils import secure_filename
@@ -205,7 +206,21 @@ def add_security_rule():
         
         # Parse conditions from form
         for key in form_data:
-            if key.startswith('conditions[') and key.endswith('][field]'):
+            if key.startswith('edit_conditions[') and key.endswith('][field]'):
+                index = key.split('[')[1].split(']')[0]
+                field_key = f'edit_conditions[{index}][field]'
+                operator_key = f'edit_conditions[{index}][operator]'
+                value_key = f'edit_conditions[{index}][value]'
+                
+                if field_key in form_data and operator_key in form_data:
+                    condition = {
+                        'field': form_data[field_key],
+                        'operator': form_data[operator_key],
+                        'value': form_data.get(value_key, '')
+                    }
+                    conditions.append(condition)
+            elif key.startswith('conditions[') and key.endswith('][field]'):
+                # Handle regular conditions too
                 index = key.split('[')[1].split(']')[0]
                 field_key = f'conditions[{index}][field]'
                 operator_key = f'conditions[{index}][operator]'
@@ -220,7 +235,7 @@ def add_security_rule():
                     conditions.append(condition)
         
         # Get logical operator
-        logical_operator = request.form.get('logical_operator', 'AND')
+        logical_operator = request.form.get('edit_logical_operator', request.form.get('logical_operator', 'AND'))
         
         # Create rule pattern as JSON for multiple conditions
         rule_pattern = {
@@ -279,6 +294,41 @@ def get_security_rule_api(rule_id):
         'conditions': conditions,
         'logical_operator': logical_operator
     })
+
+@app.route('/api/rules/<int:rule_id>', methods=['PUT'])
+def update_security_rule_api(rule_id):
+    """API endpoint to update rule via JSON"""
+    rule = SecurityRule.query.get_or_404(rule_id)
+    
+    try:
+        import json
+        data = request.get_json()
+        
+        conditions = data.get('conditions', [])
+        logical_operator = data.get('logical_operator', 'AND')
+        
+        # Create rule pattern as JSON for multiple conditions
+        rule_pattern = {
+            'conditions': conditions,
+            'logical_operator': logical_operator
+        }
+        
+        # Update rule
+        rule.name = data['name']
+        rule.description = data.get('description', '')
+        rule.rule_type = conditions[0]['field'] if conditions else rule.rule_type
+        rule.pattern = json.dumps(rule_pattern)
+        rule.action = data.get('action', 'flag')
+        rule.severity = data.get('severity', 'medium')
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Rule updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error updating security rule: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/rules-engine/edit/<int:rule_id>', methods=['GET', 'POST'])
 def edit_security_rule(rule_id):
@@ -456,6 +506,101 @@ def add_risk_keyword():
 def admin():
     """Admin panel"""
     return render_template('admin.html')
+
+@app.route('/admin/populate-sample-data', methods=['POST'])
+def populate_sample_data():
+    """Populate database with sample security rules and keywords"""
+    try:
+        # Add sample security rules
+        sample_rules = [
+            {
+                'name': 'External sender with executable attachment',
+                'description': 'Detects emails from external senders with executable attachments',
+                'rule_type': 'attachment',
+                'pattern': json.dumps({
+                    'conditions': [
+                        {'field': 'attachments', 'operator': 'contains', 'value': '.exe'},
+                        {'field': 'sender', 'operator': 'not_contains', 'value': '@company.com'}
+                    ],
+                    'logical_operator': 'AND'
+                }),
+                'action': 'quarantine',
+                'severity': 'high'
+            },
+            {
+                'name': 'Leaver sending emails',
+                'description': 'Detects emails from users marked as leavers',
+                'rule_type': 'leaver',
+                'pattern': json.dumps({
+                    'conditions': [
+                        {'field': 'leaver', 'operator': 'equals', 'value': 'yes'}
+                    ],
+                    'logical_operator': 'AND'
+                }),
+                'action': 'flag',
+                'severity': 'critical'
+            },
+            {
+                'name': 'Urgent phishing keywords',
+                'description': 'Detects phishing attempts with urgent language',
+                'rule_type': 'subject',
+                'pattern': json.dumps({
+                    'conditions': [
+                        {'field': 'subject', 'operator': 'contains', 'value': 'urgent'},
+                        {'field': 'subject', 'operator': 'contains', 'value': 'verify'}
+                    ],
+                    'logical_operator': 'OR'
+                }),
+                'action': 'flag',
+                'severity': 'medium'
+            }
+        ]
+        
+        for rule_data in sample_rules:
+            existing_rule = SecurityRule.query.filter_by(name=rule_data['name']).first()
+            if not existing_rule:
+                rule = SecurityRule(**rule_data)
+                db.session.add(rule)
+        
+        # Add sample risk keywords
+        sample_keywords = [
+            {'keyword': 'urgent', 'category': 'phishing', 'weight': 2.0},
+            {'keyword': 'verify account', 'category': 'phishing', 'weight': 3.0},
+            {'keyword': 'bitcoin', 'category': 'financial', 'weight': 2.5},
+            {'keyword': 'wire transfer', 'category': 'financial', 'weight': 3.0},
+            {'keyword': 'click here', 'category': 'phishing', 'weight': 1.5},
+            {'keyword': 'suspended', 'category': 'phishing', 'weight': 2.0},
+            {'keyword': 'confidential', 'category': 'data_exfiltration', 'weight': 1.0}
+        ]
+        
+        for keyword_data in sample_keywords:
+            existing_keyword = RiskKeyword.query.filter_by(keyword=keyword_data['keyword']).first()
+            if not existing_keyword:
+                keyword = RiskKeyword(**keyword_data)
+                db.session.add(keyword)
+        
+        # Add sample whitelist domains
+        sample_domains = [
+            {'domain': 'microsoft.com', 'description': 'Microsoft Corporation'},
+            {'domain': 'google.com', 'description': 'Google Services'},
+            {'domain': 'company.com', 'description': 'Internal company domain'}
+        ]
+        
+        for domain_data in sample_domains:
+            existing_domain = WhitelistDomain.query.filter_by(domain=domain_data['domain']).first()
+            if not existing_domain:
+                domain = WhitelistDomain(**domain_data)
+                db.session.add(domain)
+        
+        db.session.commit()
+        flash('Sample data populated successfully!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error populating sample data: {str(e)}', 'error')
+        logging.error(f"Error populating sample data: {str(e)}")
+    
+    return redirect(url_for('admin'))
 
 @app.route('/admin/clear-database', methods=['POST'])
 def clear_database():
