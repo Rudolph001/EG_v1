@@ -227,6 +227,35 @@ def recipients():
 
     return render_template('recipients.html', recipients=recipients)
 
+@app.route('/flagged-events')
+def flagged_events():
+    """Display flagged recipients and emails"""
+    page = request.args.get('page', 1, type=int)
+    
+    # Get flagged recipients with their emails
+    flagged_recipients = db.session.query(RecipientRecord, EmailRecord).join(
+        EmailRecord, RecipientRecord.email_id == EmailRecord.id
+    ).filter(RecipientRecord.flagged == True).order_by(
+        RecipientRecord.created_at.desc()
+    ).paginate(page=page, per_page=20, error_out=False)
+    
+    # Get summary statistics
+    total_flagged = RecipientRecord.query.filter_by(flagged=True).count()
+    high_risk_count = RecipientRecord.query.filter(
+        RecipientRecord.flagged == True,
+        RecipientRecord.risk_score >= 7.0
+    ).count()
+    
+    stats = {
+        'total_flagged': total_flagged,
+        'high_risk_count': high_risk_count,
+        'open_cases': Case.query.filter_by(status='open').count()
+    }
+    
+    return render_template('flagged_events.html', 
+                         flagged_recipients=flagged_recipients, 
+                         stats=stats)
+
 @app.route('/reports')
 def reports():
     """Reports dashboard"""
