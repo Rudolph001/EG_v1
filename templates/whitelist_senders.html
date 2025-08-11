@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Whitelist Senders - Email Guardian{% endblock %}
+
+{% block page_title %}Whitelist Senders{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSenderModal">
+    <i class="fas fa-plus"></i> Add Sender
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-envelope"></i> Trusted Email Senders</h5>
+    </div>
+    <div class="card-body">
+        {% if senders %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="sendersTable">
+                <thead>
+                    <tr>
+                        <th>Email Address</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sender in senders %}
+                    <tr>
+                        <td>
+                            <i class="fas fa-envelope text-success"></i>
+                            <strong>{{ sender.email }}</strong>
+                        </td>
+                        <td>{{ sender.description or '-' }}</td>
+                        <td>
+                            <span class="badge bg-success">Active</span>
+                        </td>
+                        <td><small>{{ sender.created_at.strftime('%Y-%m-%d') }}</small></td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-warning btn-sm" onclick="editSender({{ sender.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="removeSender({{ sender.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+            <h5>No Trusted Senders</h5>
+            <p class="text-muted">Add trusted email addresses to reduce false positives in threat detection.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSenderModal">
+                <i class="fas fa-plus"></i> Add First Sender
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Sender Modal -->
+<div class="modal fade" id="addSenderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Trusted Sender</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_whitelist_sender') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="email" name="email" required 
+                               placeholder="user@example.com">
+                        <div class="form-text">Enter the complete email address</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Optional description (e.g., CEO, Business partner, System notification)"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Adding an email to the whitelist will mark emails from this sender as trusted and reduce their risk scores.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Sender</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#sendersTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 3, "desc" ]], // Sort by added date
+        "columnDefs": [
+            { "orderable": false, "targets": 4 } // Disable sorting on actions column
+        ]
+    });
+});
+
+function editSender(senderId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+
+function removeSender(senderId) {
+    if (confirm('Are you sure you want to remove this sender from the whitelist?')) {
+        // TODO: Implement remove functionality
+        alert('Remove functionality coming soon!');
+    }
+}
+</script>
+{% endblock %}

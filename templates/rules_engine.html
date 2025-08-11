@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Rules Engine - Email Guardian{% endblock %}
+
+{% block page_title %}Security Rules Engine{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+    <i class="fas fa-plus"></i> Add Rule
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Security Rules</h5>
+    </div>
+    <div class="card-body">
+        {% if rules %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="rulesTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Pattern</th>
+                        <th>Action</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rule in rules %}
+                    <tr>
+                        <td>
+                            <strong>{{ rule.name }}</strong>
+                            {% if rule.description %}
+                            <br><small class="text-muted">{{ rule.description }}</small>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-info">{{ rule.rule_type.title() }}</span></td>
+                        <td><code>{{ rule.pattern[:50] }}{% if rule.pattern|length > 50 %}...{% endif %}</code></td>
+                        <td><span class="badge bg-warning">{{ rule.action.title() }}</span></td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if rule.severity == 'critical' else 'warning' if rule.severity == 'high' else 'info' if rule.severity == 'medium' else 'success' }}">
+                                {{ rule.severity.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if rule.active else 'secondary' }}">
+                                {{ 'Active' if rule.active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td><small>{{ rule.created_at.strftime('%Y-%m-%d') }}</small></td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="editRule({{ rule.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-{{ 'secondary' if rule.active else 'success' }} btn-sm" onclick="toggleRule({{ rule.id }})">
+                                    <i class="fas fa-{{ 'pause' if rule.active else 'play' }}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+            <h5>No Security Rules Configured</h5>
+            <p class="text-muted">Add your first security rule to start automated threat detection.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                <i class="fas fa-plus"></i> Add First Rule
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Rule Modal -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Security Rule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_security_rule') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Rule Name *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="rule_type" class="form-label">Rule Type *</label>
+                                <select class="form-select" id="rule_type" name="rule_type" required>
+                                    <option value="">Select type...</option>
+                                    <option value="sender">Sender</option>
+                                    <option value="subject">Subject</option>
+                                    <option value="recipient">Recipient</option>
+                                    <option value="domain">Domain</option>
+                                    <option value="attachment">Attachment</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pattern" class="form-label">Pattern *</label>
+                        <input type="text" class="form-control" id="pattern" name="pattern" required 
+                               placeholder="e.g., urgent, .exe, @suspicious-domain.com">
+                        <div class="form-text">Enter the pattern to match (supports regex for advanced users).</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Brief description of what this rule detects"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="action" class="form-label">Action</label>
+                                <select class="form-select" id="action" name="action">
+                                    <option value="flag">Flag for Review</option>
+                                    <option value="block">Block</option>
+                                    <option value="quarantine">Quarantine</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="severity" class="form-label">Severity</label>
+                                <select class="form-select" id="severity" name="severity">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Rule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#rulesTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 6, "desc" ]], // Sort by created date
+        "columnDefs": [
+            { "orderable": false, "targets": 7 } // Disable sorting on actions column
+        ]
+    });
+});
+
+function editRule(ruleId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+
+function toggleRule(ruleId) {
+    // TODO: Implement toggle functionality
+    alert('Toggle functionality coming soon!');
+}
+</script>
+{% endblock %}

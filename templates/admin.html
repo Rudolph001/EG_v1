@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Email Guardian{% endblock %}
+
+{% block page_title %}Administration{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-danger" onclick="clearLogs()">
+    <i class="fas fa-trash"></i> Clear Logs
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- System Status -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-server"></i> System Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-check-circle fa-2x"></i>
+                                    <div class="ms-3">
+                                        <div class="text-white-75">Database</div>
+                                        <div class="h5">Online</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-cogs fa-2x"></i>
+                                    <div class="ms-3">
+                                        <div class="text-white-75">ML Engine</div>
+                                        <div class="h5">Running</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-shield-alt fa-2x"></i>
+                                    <div class="ms-3">
+                                        <div class="text-white-75">Security</div>
+                                        <div class="h5">Active</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                                    <div class="ms-3">
+                                        <div class="text-white-75">Queue</div>
+                                        <div class="h5">3 Pending</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Management -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Configuration Management</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Processing Pipeline</h6>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="emailNormalization" checked>
+                            <label class="form-check-label" for="emailNormalization">Email Normalization</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="mlAnalysis" checked>
+                            <label class="form-check-label" for="mlAnalysis">ML Analysis</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="advancedMl" checked>
+                            <label class="form-check-label" for="advancedMl">Advanced ML</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="caseGeneration" checked>
+                            <label class="form-check-label" for="caseGeneration">Case Generation</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Thresholds</h6>
+                        <div class="mb-3">
+                            <label for="riskThreshold" class="form-label">Risk Score Threshold</label>
+                            <input type="range" class="form-range" id="riskThreshold" min="1" max="10" value="5">
+                            <div class="form-text">Current: 5.0</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="caseThreshold" class="form-label">Case Generation Threshold</label>
+                            <input type="range" class="form-range" id="caseThreshold" min="5" max="15" value="8">
+                            <div class="form-text">Current: 8.0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-primary">Save Configuration</button>
+                    <button type="button" class="btn btn-outline-secondary">Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt"></i> Refresh ML Models
+                    </button>
+                    <button type="button" class="btn btn-outline-warning">
+                        <i class="fas fa-database"></i> Optimize Database
+                    </button>
+                    <button type="button" class="btn btn-outline-info">
+                        <i class="fas fa-download"></i> Export Configuration
+                    </button>
+                    <button type="button" class="btn btn-outline-success">
+                        <i class="fas fa-upload"></i> Import Rules
+                    </button>
+                    <hr>
+                    <button type="button" class="btn btn-outline-danger">
+                        <i class="fas fa-trash"></i> Clear Old Data
+                    </button>
+                    <button type="button" class="btn btn-outline-danger">
+                        <i class="fas fa-power-off"></i> System Restart
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> System Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Version:</strong></td>
+                        <td>Email Guardian v2.1.0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Uptime:</strong></td>
+                        <td>2 days, 14 hours</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Database:</strong></td>
+                        <td>SQLite (Local)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Python:</strong></td>
+                        <td>3.11.5</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Flask:</strong></td>
+                        <td>2.3.3</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last Backup:</strong></td>
+                        <td>2025-08-11 06:00</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Maintenance Tasks -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-tools"></i> Maintenance Tasks</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Last Run</th>
+                        <th>Next Scheduled</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Database Cleanup</td>
+                        <td>2025-08-11 06:00</td>
+                        <td>2025-08-12 06:00</td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                        <td><button class="btn btn-sm btn-outline-primary">Run Now</button></td>
+                    </tr>
+                    <tr>
+                        <td>ML Model Update</td>
+                        <td>2025-08-10 12:00</td>
+                        <td>2025-08-17 12:00</td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                        <td><button class="btn btn-sm btn-outline-primary">Run Now</button></td>
+                    </tr>
+                    <tr>
+                        <td>Log Rotation</td>
+                        <td>2025-08-11 00:00</td>
+                        <td>2025-08-12 00:00</td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                        <td><button class="btn btn-sm btn-outline-primary">Run Now</button></td>
+                    </tr>
+                    <tr>
+                        <td>Security Scan</td>
+                        <td>2025-08-11 18:00</td>
+                        <td>2025-08-11 19:00</td>
+                        <td><span class="badge bg-warning">Running</span></td>
+                        <td><button class="btn btn-sm btn-outline-secondary" disabled>Running</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function clearLogs() {
+    if (confirm('Are you sure you want to clear all system logs? This action cannot be undone.')) {
+        // TODO: Implement log clearing
+        alert('Log clearing functionality coming soon!');
+    }
+}
+
+// Update range input displays
+document.getElementById('riskThreshold').addEventListener('input', function(e) {
+    e.target.nextElementSibling.textContent = 'Current: ' + e.target.value + '.0';
+});
+
+document.getElementById('caseThreshold').addEventListener('input', function(e) {
+    e.target.nextElementSibling.textContent = 'Current: ' + e.target.value + '.0';
+});
+</script>
+{% endblock %}

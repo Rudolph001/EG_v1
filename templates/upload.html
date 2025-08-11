@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Data - Email Guardian{% endblock %}
+
+{% block page_title %}Upload Email Data{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-upload"></i> CSV Data Upload</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>File Requirements:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>File format: CSV only</li>
+                        <li>Maximum file size: 16MB</li>
+                        <li>Required columns: _time, sender, subject, attachments, recipients, recipients_email_domain, leaver, termination, account_type, wordlist_attachment, wordlist_subject, bunit, department, user_response, final_outcome, policy_name, justifications</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select CSV File</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                        <div class="form-text">Choose a CSV file containing email data to process.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmProcessing" required>
+                            <label class="form-check-label" for="confirmProcessing">
+                                I confirm that this data is authorized for processing and contains no sensitive personal information that requires special handling.
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            <i class="fas fa-upload"></i> Upload and Process
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+                
+                <!-- Processing Progress (hidden by default) -->
+                <div id="processingProgress" class="mt-4" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-spinner fa-spin"></i> Processing your file through the 11-stage pipeline...
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">Current stage: <span id="currentStage">Data Ingestion</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Processing Pipeline Information -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cogs"></i> 11-Stage Processing Pipeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">1</span> Data Ingestion</h6>
+                            <p class="small text-muted">Load CSV, parse fields, and validate data structure.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">2</span> Email Normalization</h6>
+                            <p class="small text-muted">Split multi-recipient emails into individual records.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">3</span> Exclusion Rules</h6>
+                            <p class="small text-muted">Filter out emails based on predefined exclusion criteria.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">4</span> Whitelist Filtering</h6>
+                            <p class="small text-muted">Check against trusted domains and senders.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">5</span> Security Rules</h6>
+                            <p class="small text-muted">Apply configurable security rules and scoring.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">6</span> Risk Keywords</h6>
+                            <p class="small text-muted">Detect and score risk-related keywords.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">7</span> Exclusion Keywords</h6>
+                            <p class="small text-muted">Reduce false positives with exclusion patterns.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">8</span> ML Analysis</h6>
+                            <p class="small text-muted">Basic machine learning risk assessment.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">9</span> Advanced ML</h6>
+                            <p class="small text-muted">Network analysis and correlation detection.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">10</span> Case Generation</h6>
+                            <p class="small text-muted">Create security cases for flagged events.</p>
+                        </div>
+                        
+                        <div class="pipeline-stage">
+                            <h6><span class="badge bg-primary">11</span> Database Write</h6>
+                            <p class="small text-muted">Save processed data with all analysis results.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('file');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressDiv = document.getElementById('processingProgress');
+    
+    if (fileInput.files.length > 0) {
+        // Show processing UI
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        progressDiv.style.display = 'block';
+        
+        // Simulate pipeline stages for UI feedback
+        const stages = [
+            'Data Ingestion',
+            'Email Normalization', 
+            'Exclusion Rules',
+            'Whitelist Filtering',
+            'Security Rules',
+            'Risk Keywords',
+            'Exclusion Keywords',
+            'ML Analysis',
+            'Advanced ML',
+            'Case Generation',
+            'Database Write'
+        ];
+        
+        let currentStageIndex = 0;
+        const progressBar = document.querySelector('.progress-bar');
+        const stageSpan = document.getElementById('currentStage');
+        
+        const stageInterval = setInterval(() => {
+            if (currentStageIndex < stages.length) {
+                stageSpan.textContent = stages[currentStageIndex];
+                progressBar.style.width = ((currentStageIndex + 1) / stages.length * 100) + '%';
+                currentStageIndex++;
+            } else {
+                clearInterval(stageInterval);
+            }
+        }, 1000);
+    }
+});
+
+// File validation
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+            alert('Please select a CSV file.');
+            e.target.value = '';
+            return;
+        }
+        
+        if (file.size > 16 * 1024 * 1024) {
+            alert('File size must be less than 16MB.');
+            e.target.value = '';
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

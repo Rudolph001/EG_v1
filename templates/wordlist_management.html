@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Wordlist Management - Email Guardian{% endblock %}
+
+{% block page_title %}Risk Keywords Management{% endblock %}
+
+{% block page_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeywordModal">
+    <i class="fas fa-plus"></i> Add Keyword
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Category Overview -->
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-tags"></i> Keyword Categories</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-danger">{{ keywords|selectattr('category', 'equalto', 'financial')|list|length }}</div>
+                            <div class="text-muted">Financial</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-warning">{{ keywords|selectattr('category', 'equalto', 'phishing')|list|length }}</div>
+                            <div class="text-muted">Phishing</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-info">{{ keywords|selectattr('category', 'equalto', 'malware')|list|length }}</div>
+                            <div class="text-muted">Malware</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-success">{{ keywords|selectattr('category', 'equalto', 'data_exfiltration')|list|length }}</div>
+                            <div class="text-muted">Data Exfiltration</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-primary">{{ keywords|selectattr('category', 'equalto', 'social_engineering')|list|length }}</div>
+                            <div class="text-muted">Social Engineering</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="h4 text-secondary">{{ keywords|selectattr('category', 'equalto', 'other')|list|length }}</div>
+                            <div class="text-muted">Other</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Risk Keywords</h5>
+    </div>
+    <div class="card-body">
+        {% if keywords %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="keywordsTable">
+                <thead>
+                    <tr>
+                        <th>Keyword</th>
+                        <th>Category</th>
+                        <th>Weight</th>
+                        <th>Status</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for keyword in keywords %}
+                    <tr>
+                        <td>
+                            <code>{{ keyword.keyword }}</code>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if keyword.category == 'financial' else 'warning' if keyword.category == 'phishing' else 'info' if keyword.category == 'malware' else 'success' if keyword.category == 'data_exfiltration' else 'primary' if keyword.category == 'social_engineering' else 'secondary' }}">
+                                {{ keyword.category.replace('_', ' ').title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if keyword.weight >= 3 else 'warning' if keyword.weight >= 2 else 'info' }}">
+                                {{ keyword.weight }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if keyword.active else 'secondary' }}">
+                                {{ 'Active' if keyword.active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td><small>{{ keyword.created_at.strftime('%Y-%m-%d') }}</small></td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="editKeyword({{ keyword.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-{{ 'secondary' if keyword.active else 'success' }} btn-sm" onclick="toggleKeyword({{ keyword.id }})">
+                                    <i class="fas fa-{{ 'pause' if keyword.active else 'play' }}"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="removeKeyword({{ keyword.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-list fa-3x text-muted mb-3"></i>
+            <h5>No Risk Keywords Configured</h5>
+            <p class="text-muted">Add risk keywords to enhance threat detection capabilities.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeywordModal">
+                <i class="fas fa-plus"></i> Add First Keyword
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Keyword Modal -->
+<div class="modal fade" id="addKeywordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Risk Keyword</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_risk_keyword') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="keyword" class="form-label">Keyword *</label>
+                        <input type="text" class="form-control" id="keyword" name="keyword" required 
+                               placeholder="e.g., urgent, bitcoin, verify account">
+                        <div class="form-text">Enter a single keyword or phrase to detect</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category *</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">Select category...</option>
+                            <option value="financial">Financial</option>
+                            <option value="phishing">Phishing</option>
+                            <option value="malware">Malware</option>
+                            <option value="data_exfiltration">Data Exfiltration</option>
+                            <option value="social_engineering">Social Engineering</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="weight" class="form-label">Risk Weight</label>
+                        <select class="form-select" id="weight" name="weight">
+                            <option value="0.5">Low (0.5)</option>
+                            <option value="1.0" selected>Medium (1.0)</option>
+                            <option value="2.0">High (2.0)</option>
+                            <option value="3.0">Critical (3.0)</option>
+                        </select>
+                        <div class="form-text">Higher weights contribute more to the risk score</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Tips:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Use lowercase for consistency</li>
+                            <li>Consider common misspellings</li>
+                            <li>Keywords are case-insensitive during detection</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Keyword</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#keywordsTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 4, "desc" ]], // Sort by added date
+        "columnDefs": [
+            { "orderable": false, "targets": 5 } // Disable sorting on actions column
+        ]
+    });
+});
+
+function editKeyword(keywordId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+
+function toggleKeyword(keywordId) {
+    // TODO: Implement toggle functionality
+    alert('Toggle functionality coming soon!');
+}
+
+function removeKeyword(keywordId) {
+    if (confirm('Are you sure you want to remove this keyword?')) {
+        // TODO: Implement remove functionality
+        alert('Remove functionality coming soon!');
+    }
+}
+</script>
+{% endblock %}

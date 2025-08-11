@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Email Guardian{% endblock %}
+
+{% block page_title %}Security Reports{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-primary">
+        <i class="fas fa-download"></i> Export Report
+    </button>
+    <button type="button" class="btn btn-outline-primary">
+        <i class="fas fa-calendar"></i> Schedule Report
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Report Types -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-file-alt"></i> Professional Reports</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">Executive Summary</h6>
+                        <small>PDF</small>
+                    </div>
+                    <p class="mb-1">High-level security overview for executives.</p>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">Technical Analysis</h6>
+                        <small>PDF</small>
+                    </div>
+                    <p class="mb-1">Detailed technical findings and recommendations.</p>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">Threat Intelligence</h6>
+                        <small>PDF</small>
+                    </div>
+                    <p class="mb-1">Analysis of detected threats and patterns.</p>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Reports -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar"></i> Monthly Reports</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">August 2025</h6>
+                        <small class="text-success">Ready</small>
+                    </div>
+                    <p class="mb-1">Monthly security summary and trends.</p>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">July 2025</h6>
+                        <small class="text-success">Ready</small>
+                    </div>
+                    <p class="mb-1">Monthly security summary and trends.</p>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">June 2025</h6>
+                        <small class="text-success">Ready</small>
+                    </div>
+                    <p class="mb-1">Monthly security summary and trends.</p>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Reports -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Custom Reports</h5>
+            </div>
+            <div class="card-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="reportType" class="form-label">Report Type</label>
+                        <select class="form-select" id="reportType">
+                            <option>Security Overview</option>
+                            <option>Case Analysis</option>
+                            <option>Risk Assessment</option>
+                            <option>Performance Metrics</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dateRange" class="form-label">Date Range</label>
+                        <select class="form-select" id="dateRange">
+                            <option>Last 7 days</option>
+                            <option>Last 30 days</option>
+                            <option>Last 90 days</option>
+                            <option>Custom range</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="format" class="form-label">Format</label>
+                        <select class="form-select" id="format">
+                            <option>PDF</option>
+                            <option>Excel</option>
+                            <option>CSV</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-play"></i> Generate Report
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Dashboard -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Reports Dashboard</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Summary Statistics -->
+            <div class="col-md-6">
+                <canvas id="threatTrendsChart"></canvas>
+            </div>
+            <div class="col-md-6">
+                <canvas id="riskDistributionChart"></canvas>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <!-- Recent Report Activity -->
+        <h6>Recent Report Activity</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Report</th>
+                        <th>Generated</th>
+                        <th>Status</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Executive Summary - August 2025</td>
+                        <td>2025-08-11 09:30</td>
+                        <td><span class="badge bg-success">Complete</span></td>
+                        <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></td>
+                    </tr>
+                    <tr>
+                        <td>Technical Analysis - Q3 2025</td>
+                        <td>2025-08-10 14:15</td>
+                        <td><span class="badge bg-success">Complete</span></td>
+                        <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></td>
+                    </tr>
+                    <tr>
+                        <td>Custom Risk Assessment</td>
+                        <td>2025-08-11 11:45</td>
+                        <td><span class="badge bg-warning">Generating</span></td>
+                        <td><button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-clock"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Threat Trends Chart
+const threatCtx = document.getElementById('threatTrendsChart').getContext('2d');
+new Chart(threatCtx, {
+    type: 'line',
+    data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        datasets: [{
+            label: 'Threats Detected',
+            data: [12, 19, 8, 15],
+            borderColor: 'rgb(220, 53, 69)',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            tension: 0.4
+        }, {
+            label: 'False Positives',
+            data: [3, 5, 2, 4],
+            borderColor: 'rgb(255, 193, 7)',
+            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Threat Detection Trends'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Risk Distribution Chart
+const riskCtx = document.getElementById('riskDistributionChart').getContext('2d');
+new Chart(riskCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical Risk'],
+        datasets: [{
+            data: [65, 25, 8, 2],
+            backgroundColor: [
+                'rgba(40, 167, 69, 0.8)',
+                'rgba(255, 193, 7, 0.8)',
+                'rgba(255, 107, 107, 0.8)',
+                'rgba(108, 117, 125, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Risk Level Distribution'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

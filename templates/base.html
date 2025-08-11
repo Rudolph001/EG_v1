@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Email Guardian{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-primary sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <h4 class="text-white"><i class="fas fa-shield-alt"></i> Email Guardian</h4>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{{ url_for('upload_csv') }}">
+                                <i class="fas fa-upload"></i> Upload Data
+                            </a>
+                        </li>
+                        
+                        <!-- Reports Dropdown -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#reportsMenu" role="button">
+                                <i class="fas fa-chart-bar"></i> Reports <i class="fas fa-chevron-down float-end"></i>
+                            </a>
+                            <div class="collapse" id="reportsMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('reports') }}">
+                                            <i class="fas fa-file-alt"></i> Professional Reports
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('reports') }}">
+                                            <i class="fas fa-calendar"></i> Monthly Reports
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        
+                        <!-- Cases Dropdown -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#casesMenu" role="button">
+                                <i class="fas fa-exclamation-triangle"></i> Cases <i class="fas fa-chevron-down float-end"></i>
+                            </a>
+                            <div class="collapse" id="casesMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}">
+                                            <i class="fas fa-flag"></i> Flagged Events
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}?status=escalated">
+                                            <i class="fas fa-arrow-up"></i> Escalations
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}?status=resolved">
+                                            <i class="fas fa-check"></i> Cleared Cases
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        
+                        <!-- Management Dropdown -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#managementMenu" role="button">
+                                <i class="fas fa-cogs"></i> Management <i class="fas fa-chevron-down float-end"></i>
+                            </a>
+                            <div class="collapse" id="managementMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('rules_engine') }}">
+                                            <i class="fas fa-rules"></i> Rules Engine
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('whitelist_domains') }}">
+                                            <i class="fas fa-globe"></i> Whitelist Domains
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('whitelist_senders') }}">
+                                            <i class="fas fa-envelope"></i> Whitelist Senders
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('wordlist_management') }}">
+                                            <i class="fas fa-list"></i> Wordlist Management
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        
+                        <!-- Admin Dropdown -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#adminMenu" role="button">
+                                <i class="fas fa-user-shield"></i> Admin <i class="fas fa-chevron-down float-end"></i>
+                            </a>
+                            <div class="collapse" id="adminMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('admin') }}">
+                                            <i class="fas fa-tools"></i> Admin Panel
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('audit') }}">
+                                            <i class="fas fa-search"></i> Audit Dashboard
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        {% block page_actions %}{% endblock %}
+                    </div>
+                </div>
+                
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <!-- Page content -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
