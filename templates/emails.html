@@ -1,0 +1,116 @@
+
+{% extends "base.html" %}
+
+{% block title %}Processed Emails - Email Guardian{% endblock %}
+
+{% block page_title %}Processed Emails{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-envelope"></i> All Processed Emails</h5>
+    </div>
+    <div class="card-body">
+        {% if emails.items %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="emailsTable">
+                <thead>
+                    <tr>
+                        <th>Email ID</th>
+                        <th>Sender</th>
+                        <th>Subject</th>
+                        <th>Recipients</th>
+                        <th>Processed</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for email in emails.items %}
+                    <tr>
+                        <td><code>EMAIL-{{ email.id }}</code></td>
+                        <td>{{ email.sender }}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 200px;" title="{{ email.subject }}">
+                                {{ email.subject or 'No Subject' }}
+                            </div>
+                        </td>
+                        <td>{{ email.recipients|length }} recipients</td>
+                        <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if email.pipeline_status == 'completed' else 'warning' if email.pipeline_status == 'processing' else 'danger' }}">
+                                {{ email.pipeline_status.title() if email.pipeline_status else 'Unknown' }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if emails.pages > 1 %}
+        <nav aria-label="Emails pagination">
+            <ul class="pagination justify-content-center">
+                {% if emails.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('emails', page=emails.prev_num) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in emails.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != emails.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('emails', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if emails.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('emails', page=emails.next_num) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <h5>No Emails Found</h5>
+            <p class="text-muted">No emails have been processed yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#emailsTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 4, "desc" ]], // Sort by processed date
+        "columnDefs": [
+            { "orderable": false, "targets": 6 } // Disable sorting on actions column
+        ]
+    });
+});
+</script>
+{% endblock %}

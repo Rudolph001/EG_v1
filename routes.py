@@ -147,6 +147,36 @@ def update_case(case_id):
     try:
         db.session.commit()
         flash('Case updated successfully', 'success')
+
+
+@app.route('/emails')
+def emails():
+    """Display all processed emails"""
+    page = request.args.get('page', 1, type=int)
+    
+    emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('emails.html', emails=emails)
+
+@app.route('/emails/<int:email_id>')
+def email_detail(email_id):
+    """Display detailed email information"""
+    email = EmailRecord.query.get_or_404(email_id)
+    return render_template('email_detail.html', email=email)
+
+@app.route('/recipients')
+def recipients():
+    """Display all recipients"""
+    page = request.args.get('page', 1, type=int)
+    
+    recipients = RecipientRecord.query.order_by(RecipientRecord.created_at.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    
+    return render_template('recipients.html', recipients=recipients)
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error updating case: {str(e)}', 'error')
