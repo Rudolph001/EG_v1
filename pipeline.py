@@ -121,8 +121,13 @@ class EmailProcessingPipeline:
         normalized_rows = []
         
         for _, row in df.iterrows():
-            # Split recipients if multiple
-            recipients = str(row['recipients']).split(';') if row['recipients'] else ['']
+            # Split recipients if multiple (handle both comma and semicolon separators)
+            recipients_str = str(row['recipients']) if row['recipients'] else ''
+            # Try semicolon first, then comma
+            if ';' in recipients_str:
+                recipients = recipients_str.split(';')
+            else:
+                recipients = recipients_str.split(',')
             recipients = [r.strip() for r in recipients if r.strip()]
             
             if not recipients:
