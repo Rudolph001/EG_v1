@@ -298,9 +298,13 @@ class EmailProcessingPipeline:
     def _stage_11_database_write(self, email_record, processed_recipients):
         """Stage 11: Save email record with all processed recipient data"""
         try:
+            # First save the email record to get its ID
             db.session.add(email_record)
+            db.session.flush()  # This assigns the ID without committing
             
+            # Now set the email_id for all recipients and add them
             for recipient in processed_recipients:
+                recipient.email_id = email_record.id
                 db.session.add(recipient)
             
             db.session.commit()
