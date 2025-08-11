@@ -20,6 +20,8 @@
                         <th>Sender</th>
                         <th>Subject</th>
                         <th>Recipients</th>
+                        <th>Attachments</th>
+                        <th>Leaver</th>
                         <th>Processed</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -36,6 +38,26 @@
                             </div>
                         </td>
                         <td>{{ email.recipients|length }} recipients</td>
+                        <td>
+                            {% if email.attachments and email.attachments.strip() %}
+                                {% set attachment_count = email.attachments.count(',') + 1 if ',' in email.attachments else (1 if email.attachments.strip() else 0) %}
+                                <span class="badge bg-info">{{ attachment_count }} attachment{{ 's' if attachment_count != 1 else '' }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">0 attachments</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set is_leaver = email.recipients|selectattr('leaver', 'equalto', 'yes')|list|length > 0 %}
+                            {% if is_leaver %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-user-times"></i> Leaver
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-user-check"></i> Active
+                                </span>
+                            {% endif %}
+                        </td>
                         <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
                         <td>
                             <span class="badge bg-{{ 'success' if email.pipeline_status == 'completed' else 'warning' if email.pipeline_status == 'processing' else 'danger' }}">
@@ -106,9 +128,9 @@
 $(document).ready(function() {
     $('#emailsTable').DataTable({
         "pageLength": 25,
-        "order": [[ 4, "desc" ]], // Sort by processed date
+        "order": [[ 6, "desc" ]], // Sort by processed date (now column 6)
         "columnDefs": [
-            { "orderable": false, "targets": 6 } // Disable sorting on actions column
+            { "orderable": false, "targets": 8 } // Disable sorting on actions column (now column 8)
         ]
     });
 });
