@@ -104,7 +104,7 @@
                                 {% for recipient in email.recipients %}
                                     {% if recipient.leaver == 'yes' %}
                                         {% set is_leaver = true %}
-                                        {% break %}
+                                        
                                     {% endif %}
                                 {% endfor %}
                             {% endif %}
@@ -141,7 +141,7 @@
                                 {% for recipient in email.recipients %}
                                     {% if recipient.leaver == 'yes' %}
                                         {% set is_leaver = true %}
-                                        {% break %}
+                                        
                                     {% endif %}
                                 {% endfor %}
                             {% endif %}
@@ -160,6 +160,14 @@
                                 <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Email Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                
+                                <!-- Move back to Processed Emails -->
+                                <form method="POST" action="{{ url_for('move_to_processed', email_id=email.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move back to Processed Emails" onclick="return confirm('Move this email back to All Processed Emails?')">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                </form>
+                                
                                 {% if email.cases %}
                                     {% for case in email.cases %}
                                     <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-warning btn-sm" title="View Case">

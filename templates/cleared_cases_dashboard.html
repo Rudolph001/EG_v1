@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Cleared Cases Dashboard - Email Guardian{% endblock %}
+
+{% block page_title %}Cleared Cases Dashboard{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-check-circle"></i> Cleared Cases</h5>
+    </div>
+    <div class="card-body">
+        {% if cleared_emails.items %}
+        <div class="table-responsive">
+            <table class="table table-striped" id="clearedCasesTable">
+                <thead>
+                    <tr>
+                        <th>Event ID</th>
+                        <th>Sender</th>
+                        <th>Subject</th>
+                        <th>Recipients</th>
+                        <th>Cleared Date</th>
+                        <th>Cleared By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for email, sender_metadata in cleared_emails.items %}
+                    <tr>
+                        <td><code>CLR-{{ email.id }}</code></td>
+                        <td>{{ email.sender }}</td>
+                        <td>
+                            <span class="text-truncate" style="max-width: 200px; display: inline-block;" title="{{ email.subject or 'No Subject' }}">
+                                {{ email.subject or 'No Subject' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ email.recipients|length if email.recipients else 0 }}</span>
+                        </td>
+                        <td>{{ email.processed_at.strftime('%Y-%m-%d %H:%M') if email.processed_at }}</td>
+                        <td>
+                            <span class="badge bg-success">
+                                {{ email.cleared_event[0].cleared_by if email.cleared_event else 'User' }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Email Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <!-- Move back to Processed Emails -->
+                                <form method="POST" action="{{ url_for('move_to_processed', email_id=email.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move back to Processed Emails" onclick="return confirm('Move this email back to All Processed Emails?')">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if cleared_emails.pages > 1 %}
+        <nav aria-label="Cleared cases pagination">
+            <ul class="pagination justify-content-center">
+                {% if cleared_emails.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cleared_cases_dashboard', page=cleared_emails.prev_num) }}">Previous</a>
+                </li>
+                {% endif %}
+
+                {% for page_num in cleared_emails.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != cleared_emails.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('cleared_cases_dashboard', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if cleared_emails.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cleared_cases_dashboard', page=cleared_emails.next_num) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+            <h5>No Cleared Cases</h5>
+            <p class="text-muted">No cases have been cleared yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#clearedCasesTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 4, "desc" ]], // Sort by cleared date
+        "columnDefs": [
+            { "orderable": false, "targets": 6 } // Disable sorting on actions column
+        ]
+    });
+});
+</script>
+{% endblock %}

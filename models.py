@@ -169,3 +169,64 @@ class ProcessingLog(db.Model):
     message = db.Column(db.Text)
     processing_time = db.Column(db.Float)  # in seconds
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class EmailState(db.Model):
+    __tablename__ = 'email_states'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email_id = db.Column(db.Integer, db.ForeignKey('email_records.id'), nullable=False, unique=True)
+    current_state = db.Column(db.String(50), nullable=False, default='processed')  # processed, flagged, escalated, cleared
+    previous_state = db.Column(db.String(50))  # for undo functionality
+    notes = db.Column(db.Text)
+    moved_by = db.Column(db.String(100))  # user who moved the email
+    moved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    email = db.relationship('EmailRecord', backref='state', lazy=True)
+
+class FlaggedEvent(db.Model):
+    __tablename__ = 'flagged_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email_id = db.Column(db.Integer, db.ForeignKey('email_records.id'), nullable=False)
+    flagged_reason = db.Column(db.Text)
+    severity = db.Column(db.String(20), default='medium')  # low, medium, high, critical
+    flagged_by = db.Column(db.String(100))
+    resolved = db.Column(db.Boolean, default=False)
+    resolved_at = db.Column(db.DateTime)
+    resolved_by = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    email = db.relationship('EmailRecord', backref='flagged_event', lazy=True)
+
+class EscalatedEvent(db.Model):
+    __tablename__ = 'escalated_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email_id = db.Column(db.Integer, db.ForeignKey('email_records.id'), nullable=False)
+    escalation_reason = db.Column(db.Text)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high, urgent
+    escalated_to = db.Column(db.String(100))
+    escalated_by = db.Column(db.String(100))
+    resolved = db.Column(db.Boolean, default=False)
+    resolved_at = db.Column(db.DateTime)
+    resolved_by = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    email = db.relationship('EmailRecord', backref='escalated_event', lazy=True)
+
+class ClearedEvent(db.Model):
+    __tablename__ = 'cleared_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email_id = db.Column(db.Integer, db.ForeignKey('email_records.id'), nullable=False)
+    cleared_reason = db.Column(db.Text)
+    cleared_by = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    email = db.relationship('EmailRecord', backref='cleared_event', lazy=True)

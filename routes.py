@@ -4,7 +4,7 @@ import json
 import pandas as pd
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.utils import secure_filename
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_, exists
 from app import app, db
 from models import *
 from pipeline import EmailProcessingPipeline
@@ -210,10 +210,18 @@ def update_case(case_id):
 
 @app.route('/emails')
 def emails():
-    """Display all processed emails"""
+    """Display all processed emails (only emails in 'processed' state)"""
     page = request.args.get('page', 1, type=int)
 
-    emails = EmailRecord.query.order_by(EmailRecord.processed_at.desc()).paginate(
+    # Only show emails that are in 'processed' state (or have no state set)
+    emails = db.session.query(EmailRecord).outerjoin(
+        EmailState, EmailRecord.id == EmailState.email_id
+    ).filter(
+        or_(
+            EmailState.current_state == 'processed',
+            EmailState.current_state == None
+        )
+    ).order_by(EmailRecord.processed_at.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
 
@@ -827,6 +835,197 @@ def debug_data_counts():
             } for e in recent_emails
         ]
     })
+
+# Email State Management Routes
+@app.route('/move-to-flagged/<int:email_id>', methods=['POST'])
+def move_to_flagged(email_id):
+    """Move email to flagged events dashboard"""
+    try:
+        email = EmailRecord.query.get_or_404(email_id)
+        
+        # Get or create email state
+        email_state = EmailState.query.filter_by(email_id=email_id).first()
+        if not email_state:
+            email_state = EmailState(email_id=email_id, current_state='processed')
+            db.session.add(email_state)
+        
+        # Update state
+        email_state.previous_state = email_state.current_state
+        email_state.current_state = 'flagged'
+        email_state.moved_by = 'User'  # You can implement user authentication later
+        email_state.moved_at = datetime.utcnow()
+        
+        # Create flagged event record
+        flagged_event = FlaggedEvent(
+            email_id=email_id,
+            flagged_reason='Manually flagged by user',
+            severity='medium',
+            flagged_by='User'
+        )
+        db.session.add(flagged_event)
+        
+        db.session.commit()
+        flash(f'Email "{email.subject[:50]}..." moved to Flagged Events dashboard.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error moving email: {str(e)}', 'error')
+    
+    return redirect(url_for('emails'))
+
+@app.route('/move-to-escalation/<int:email_id>', methods=['POST'])
+def move_to_escalation(email_id):
+    """Move email to escalation dashboard"""
+    try:
+        email = EmailRecord.query.get_or_404(email_id)
+        
+        # Get or create email state
+        email_state = EmailState.query.filter_by(email_id=email_id).first()
+        if not email_state:
+            email_state = EmailState(email_id=email_id, current_state='processed')
+            db.session.add(email_state)
+        
+        # Update state
+        email_state.previous_state = email_state.current_state
+        email_state.current_state = 'escalated'
+        email_state.moved_by = 'User'
+        email_state.moved_at = datetime.utcnow()
+        
+        # Create escalated event record
+        escalated_event = EscalatedEvent(
+            email_id=email_id,
+            escalation_reason='Manually escalated by user',
+            priority='medium',
+            escalated_to='Security Team',
+            escalated_by='User'
+        )
+        db.session.add(escalated_event)
+        
+        db.session.commit()
+        flash(f'Email "{email.subject[:50]}..." moved to Escalation dashboard.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error moving email: {str(e)}', 'error')
+    
+    return redirect(url_for('emails'))
+
+@app.route('/move-to-cleared/<int:email_id>', methods=['POST'])
+def move_to_cleared(email_id):
+    """Move email to cleared cases dashboard"""
+    try:
+        email = EmailRecord.query.get_or_404(email_id)
+        
+        # Get or create email state
+        email_state = EmailState.query.filter_by(email_id=email_id).first()
+        if not email_state:
+            email_state = EmailState(email_id=email_id, current_state='processed')
+            db.session.add(email_state)
+        
+        # Update state
+        email_state.previous_state = email_state.current_state
+        email_state.current_state = 'cleared'
+        email_state.moved_by = 'User'
+        email_state.moved_at = datetime.utcnow()
+        
+        # Create cleared event record
+        cleared_event = ClearedEvent(
+            email_id=email_id,
+            cleared_reason='Manually cleared by user',
+            cleared_by='User'
+        )
+        db.session.add(cleared_event)
+        
+        db.session.commit()
+        flash(f'Email "{email.subject[:50]}..." moved to Cleared Cases dashboard.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error moving email: {str(e)}', 'error')
+    
+    return redirect(url_for('emails'))
+
+@app.route('/move-to-processed/<int:email_id>', methods=['POST'])
+def move_to_processed(email_id):
+    """Move email back to All Processed Emails"""
+    try:
+        email = EmailRecord.query.get_or_404(email_id)
+        
+        # Get email state
+        email_state = EmailState.query.filter_by(email_id=email_id).first()
+        if email_state:
+            # Update state
+            email_state.previous_state = email_state.current_state
+            email_state.current_state = 'processed'
+            email_state.moved_by = 'User'
+            email_state.moved_at = datetime.utcnow()
+            
+            # Mark related events as resolved
+            if email_state.previous_state == 'flagged':
+                flagged_event = FlaggedEvent.query.filter_by(email_id=email_id, resolved=False).first()
+                if flagged_event:
+                    flagged_event.resolved = True
+                    flagged_event.resolved_at = datetime.utcnow()
+                    flagged_event.resolved_by = 'User'
+            
+            elif email_state.previous_state == 'escalated':
+                escalated_event = EscalatedEvent.query.filter_by(email_id=email_id, resolved=False).first()
+                if escalated_event:
+                    escalated_event.resolved = True
+                    escalated_event.resolved_at = datetime.utcnow()
+                    escalated_event.resolved_by = 'User'
+            
+            db.session.commit()
+            flash(f'Email "{email.subject[:50]}..." moved back to All Processed Emails.', 'success')
+        else:
+            flash('Email state not found.', 'warning')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error moving email: {str(e)}', 'error')
+    
+    return redirect(request.referrer or url_for('emails'))
+
+# Dashboard Routes for New Event Types
+@app.route('/escalation-dashboard')
+def escalation_dashboard():
+    """Escalation dashboard showing escalated emails"""
+    page = request.args.get('page', 1, type=int)
+    
+    # Get escalated emails
+    escalated_emails = db.session.query(EmailRecord, SenderMetadata).join(
+        EmailState, EmailRecord.id == EmailState.email_id
+    ).outerjoin(
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(
+        EmailState.current_state == 'escalated'
+    ).order_by(EmailRecord.processed_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('escalation_dashboard.html', 
+                         escalated_emails=escalated_emails,
+                         title='Escalation Dashboard')
+
+@app.route('/cleared-cases-dashboard') 
+def cleared_cases_dashboard():
+    """Cleared cases dashboard showing cleared emails"""
+    page = request.args.get('page', 1, type=int)
+    
+    # Get cleared emails
+    cleared_emails = db.session.query(EmailRecord, SenderMetadata).join(
+        EmailState, EmailRecord.id == EmailState.email_id
+    ).outerjoin(
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(
+        EmailState.current_state == 'cleared'
+    ).order_by(EmailRecord.processed_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('cleared_cases_dashboard.html',
+                         cleared_emails=cleared_emails,
+                         title='Cleared Cases Dashboard')
 
 @app.route('/api/dashboard-data')
 def dashboard_data():

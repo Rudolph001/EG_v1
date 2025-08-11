@@ -82,13 +82,18 @@
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}?status=escalated">
-                                            <i class="fas fa-arrow-up"></i> Escalations
+                                        <a class="nav-link text-white-50" href="{{ url_for('escalation_dashboard') }}">
+                                            <i class="fas fa-arrow-up"></i> Escalation Dashboard
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}?status=resolved">
-                                            <i class="fas fa-check"></i> Cleared Cases
+                                        <a class="nav-link text-white-50" href="{{ url_for('cleared_cases_dashboard') }}">
+                                            <i class="fas fa-check-circle"></i> Cleared Cases Dashboard
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-white-50" href="{{ url_for('cases') }}">
+                                            <i class="fas fa-exclamation-triangle"></i> All Cases
                                         </a>
                                     </li>
                                 </ul>

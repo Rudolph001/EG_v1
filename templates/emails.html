@@ -75,9 +75,42 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-eye"></i> View
-                            </a>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- View Email Details -->
+                                <a href="{{ url_for('email_detail', email_id=email.id) }}" class="btn btn-outline-primary btn-sm" title="View Email Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                
+                                <!-- Move to Flagged Events -->
+                                <form method="POST" action="{{ url_for('move_to_flagged', email_id=email.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="Move to Flagged Events" onclick="return confirm('Move this email to Flagged Events?')">
+                                        <i class="fas fa-flag"></i>
+                                    </button>
+                                </form>
+                                
+                                <!-- Move to Escalation -->
+                                <form method="POST" action="{{ url_for('move_to_escalation', email_id=email.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Move to Escalation" onclick="return confirm('Escalate this email?')">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </button>
+                                </form>
+                                
+                                <!-- Move to Clear Cases -->
+                                <form method="POST" action="{{ url_for('move_to_cleared', email_id=email.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Move to Clear Cases" onclick="return confirm('Clear this case?')">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                </form>
+                                
+                                <!-- View Existing Cases -->
+                                {% if email.cases %}
+                                    {% for case in email.cases %}
+                                    <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-info btn-sm" title="View Case">
+                                        <i class="fas fa-file-alt"></i>
+                                    </a>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
