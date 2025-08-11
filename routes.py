@@ -1097,7 +1097,16 @@ def escalation_dashboard():
     escalated_emails = db.session.query(EmailRecord, SenderMetadata).join(
         EmailState, EmailRecord.id == EmailState.email_id
     ).outerjoin(
-
+        SenderMetadata, EmailRecord.sender == SenderMetadata.email
+    ).filter(
+        EmailState.current_state == 'escalated'
+    ).order_by(EmailRecord.processed_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('escalation_dashboard.html', 
+                         escalated_emails=escalated_emails,
+                         title='Escalation Dashboard')
 
 @app.route('/api/reports-data')
 def reports_data_api():
