@@ -1652,7 +1652,6 @@ def bulk_action():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/dashboard-data')
-@app.route('/api/dashboard-data')
 def dashboard_data():
     """API endpoint for dashboard charts data"""
     try:
@@ -1706,25 +1705,73 @@ def dashboard_data():
             'data': [d[1] for d in sender_domains]
         }
 
-        # Get sender status data
-        status_counts = db.session.query(
-            func.case([(SenderMetadata.leaver == 'yes', 'Leavers')], else_='Active'),
-            func.count(SenderMetadata.id)
-        ).group_by(
-            func.case([(SenderMetadata.leaver == 'yes', 'Leavers')], else_='Active')
-        ).all()
+        # Get case counts for the same period
+        daily_case_stats = db.session.query(
+            func.date(Case.created_at),
+            func.count(Case.id)
+        ).filter(Case.created_at >= seven_days_ago).group_by(
+            func.date(Case.created_at)
+        ).order_by(func.date(Case.created_at)).all()
 
-        sender_status_data = {
-            'labels': [s[0] for s in status_counts],
-            'data': [s[1] for s in status_counts]
+        case_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_case_stats}
+        case_values = []
+
+        for i in range(6, -1, -1):
+            date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+            case_values.append(case_dict.get(date, 0))
+
+        # Get sender domain distribution
+        domain_stats = db.session.query(
+            SenderMetadata.email_domain,
+            func.count(SenderMetadata.id)
+        ).group_by(SenderMetadata.email_domain).order_by(
+            func.count(SenderMetadata.id).desc()
+        ).limit(10).all()
+
+        sender_domain_data = {
+            'labels': [d[0] if d[0] else 'Unknown' for d in domain_stats],
+            'data': [d[1] for d in domain_stats]
         }
+
+        # Get sender status data - simplified query without func.case
+        leavers_count = SenderMetadata.query.filter_by(leaver='yes').count()
+        active_count = SenderMetadata.query.filter(SenderMetadata.leaver != 'yes').count()
+        
+        sender_status_data = {
+            'labels': ['Active', 'Leavers'],
+            'data': [active_count, leavers_count]
+        }
+
+        # Get risk distribution
+        risk_ranges = [
+            ('Low (0-2)', 0, 2),
+            ('Medium (2-5)', 2, 5),
+            ('High (5-8)', 5, 8),
+            ('Critical (8+)', 8, 999)
+        ]
+
+        risk_data = {'labels': [], 'data': []}
+        for label, min_score, max_score in risk_ranges:
+            if max_score == 999:
+                count = RecipientRecord.query.filter(RecipientRecord.risk_score >= min_score).count()
+            else:
+                count = RecipientRecord.query.filter(
+                    RecipientRecord.risk_score >= min_score,
+                    RecipientRecord.risk_score < max_score
+                ).count()
+            risk_data['labels'].append(label)
+            risk_data['data'].append(count)
 
         return jsonify({
             'severity_distribution': severity_data,
             'daily_processing': daily_data,
-            'daily_cases': daily_data,  # Using same data for now
-            'sender_domains': sender_domains_data,
-            'sender_status': sender_status_data
+            'daily_cases': {
+                'labels': daily_labels,
+                'data': case_values
+            },
+            'sender_domains': sender_domain_data,
+            'sender_status': sender_status_data,
+            'risk_distribution': risk_data
         })
 
     except Exception as e:
@@ -1733,72 +1780,11 @@ def dashboard_data():
             'error': 'Failed to load dashboard data',
             'severity_distribution': {'labels': ['Low', 'Medium', 'High', 'Critical'], 'data': [0, 0, 0, 0]},
             'daily_processing': {'labels': [], 'data': []},
+            'daily_cases': {'labels': [], 'data': []},
             'sender_domains': {'labels': [], 'data': []},
-            'sender_status': {'labels': ['Active', 'Leavers'], 'data': [0, 0]}
+            'sender_status': {'labels': ['Active', 'Leavers'], 'data': [0, 0]},
+            'risk_distribution': {'labels': [], 'data': []}
         })
-
-    # Get case counts for the same period
-    daily_case_stats = db.session.query(
-        func.date(Case.created_at),
-        func.count(Case.id)
-    ).filter(Case.created_at >= seven_days_ago).group_by(
-        func.date(Case.created_at)
-    ).order_by(func.date(Case.created_at)).all()
-
-    case_dict = {str(d[0]) if d[0] else '': d[1] for d in daily_case_stats}
-    case_values = []
-
-    for i in range(6, -1, -1):
-        date = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
-        case_values.append(case_dict.get(date, 0))
-
-    # Get sender domain distribution
-    domain_stats = db.session.query(
-        SenderMetadata.email_domain,
-        func.count(SenderMetadata.id)
-    ).group_by(SenderMetadata.email_domain).order_by(
-        func.count(SenderMetadata.id).desc()
-    ).limit(10).all()
-
-    sender_domain_data = {
-        'labels': [d[0] if d[0] else 'Unknown' for d in domain_stats],
-        'data': [d[1] for d in domain_stats]
-    }
-
-    # Use the sender_status_data already calculated above
-    leaver_dict = {s[0]: s[1] for s in status_counts}
-
-    # Get risk distribution
-    risk_ranges = [
-        ('Low (0-2)', 0, 2),
-        ('Medium (2-5)', 2, 5),
-        ('High (5-8)', 5, 8),
-        ('Critical (8+)', 8, 999)
-    ]
-
-    risk_data = {'labels': [], 'data': []}
-    for label, min_score, max_score in risk_ranges:
-        if max_score == 999:
-            count = RecipientRecord.query.filter(RecipientRecord.risk_score >= min_score).count()
-        else:
-            count = RecipientRecord.query.filter(
-                RecipientRecord.risk_score >= min_score,
-                RecipientRecord.risk_score < max_score
-            ).count()
-        risk_data['labels'].append(label)
-        risk_data['data'].append(count)
-
-    return jsonify({
-        'severity_distribution': severity_data,
-        'daily_processing': daily_data,
-        'daily_cases': {
-            'labels': daily_labels,
-            'data': case_values
-        },
-        'sender_domains': sender_domain_data,
-        'sender_status': sender_status_data,
-        'risk_distribution': risk_data
-    })
 
 # Error handlers
 @app.errorhandler(404)
