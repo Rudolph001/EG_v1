@@ -13,7 +13,7 @@
 
 3. **Start the application:**
    ```cmd
-   python run_local.py
+   python run_local_fixed.py
    ```
 
 ## Mac/Linux Installation
@@ -38,7 +38,7 @@
 
 3. **Start the application:**
    ```bash
-   python3 run_local.py
+   python3 run_local_fixed.py
    ```
 
 ## Manual Installation (if scripts fail)
@@ -61,7 +61,7 @@
 
 4. **Run the application:**
    ```bash
-   python run_local.py
+   python run_local_fixed.py
    ```
 
 ## Accessing the Application

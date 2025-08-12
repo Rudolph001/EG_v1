@@ -72,7 +72,7 @@ echo Installation completed successfully!
 echo ========================================
 echo.
 echo To run the application:
-echo   python main.py
+echo   python run_local_fixed.py
 echo.
 echo Then open your browser to: http://localhost:5000
 echo.
@@ -80,4 +80,4 @@ echo Press any key to start the application now...
 pause
 
 echo Starting Email Guardian...
-python main.py
+python run_local_fixed.py

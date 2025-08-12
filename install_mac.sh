@@ -76,7 +76,7 @@ echo "Installation completed successfully!"
 echo "========================================"
 echo ""
 echo "To run the application:"
-echo "  python3 main.py"
+echo "  python3 run_local_fixed.py"
 echo ""
 echo "Then open your browser to: http://localhost:5000"
 echo ""
@@ -84,4 +84,4 @@ echo "Press Enter to start the application now..."
 read
 
 echo "Starting Email Guardian..."
-python3 main.py
+python3 run_local_fixed.py
