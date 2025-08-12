@@ -45,7 +45,7 @@
 
 1. **Install dependencies:**
    ```bash
-   pip install email-validator flask flask-sqlalchemy gunicorn networkx numpy pandas psycopg2-binary scikit-learn sqlalchemy werkzeug
+   pip install email-validator flask flask-sqlalchemy gunicorn networkx numpy pandas psycopg2-binary scikit-learn sqlalchemy werkzeug xgboost textblob imbalanced-learn
    ```
 
 2. **Create required directories:**

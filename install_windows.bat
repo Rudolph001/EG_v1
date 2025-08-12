@@ -40,6 +40,9 @@ pip install psycopg2-binary==2.9.10
 pip install scikit-learn==1.7.1
 pip install sqlalchemy==2.0.42
 pip install werkzeug==3.1.3
+pip install xgboost==2.1.3
+pip install textblob==0.18.0
+pip install imbalanced-learn==0.12.4
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to install dependencies
