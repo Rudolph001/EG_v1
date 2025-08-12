@@ -1,224 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}Security Cases - Email Guardian{% endblock %}
-
-{% block page_title %}Security Cases{% endblock %}
-
-{% block page_actions %}
-<div class="btn-group" role="group">
-    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-        <i class="fas fa-filter"></i> Filter
-    </button>
-    <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="{{ url_for('cases') }}">All Cases</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('cases', status='open') }}">Open Cases</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('cases', status='investigating') }}">Under Investigation</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('cases', status='resolved') }}">Resolved</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="{{ url_for('cases', severity='critical') }}">Critical Severity</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('cases', severity='high') }}">High Severity</a></li>
-    </ul>
-</div>
-{% endblock %}
+{% block title %}Cases - Email Guardian{% endblock %}
 
 {% block content %}
-<div class="card shadow">
-    <div class="card-header">
-        <div class="row align-items-center">
-            <div class="col">
-                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Security Cases</h5>
-            </div>
-            <div class="col-auto">
-                {% if status_filter or severity_filter %}
-                <span class="badge bg-info">
-                    Filtered: 
-                    {% if status_filter %}Status: {{ status_filter.title() }}{% endif %}
-                    {% if severity_filter %}Severity: {{ severity_filter.title() }}{% endif %}
-                </span>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Security Cases</h1>
+</div>
+
+<div class="card">
     <div class="card-body">
-        {% if cases.items %}
+        {% if cases %}
         <div class="table-responsive">
-            <table class="table table-striped" id="casesTable">
+            <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Case ID</th>
+                        <th>ID</th>
                         <th>Title</th>
-                        <th>Type</th>
                         <th>Severity</th>
                         <th>Status</th>
-                        <th>Assigned To</th>
                         <th>Created</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for case in cases.items %}
+                    {% for case in cases %}
                     <tr>
+                        <td>{{ case[0] }}</td>
+                        <td>{{ case[1] }}</td>
                         <td>
-                            <code>CASE-{{ case.id }}</code>
-                        </td>
-                        <td>
-                            <div class="text-truncate" style="max-width: 200px;" title="{{ case.title }}">
-                                {{ case.title }}
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">{{ case.case_type.replace('_', ' ').title() }}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-{{ 'danger' if case.severity == 'critical' else 'warning' if case.severity == 'high' else 'info' if case.severity == 'medium' else 'success' }}">
-                                {{ case.severity.title() }}
+                            <span class="badge bg-{{ 'danger' if case[2] == 'high' else ('warning' if case[2] == 'medium' else 'info') }}">
+                                {{ case[2]|title }}
                             </span>
                         </td>
                         <td>
-                            <span class="badge bg-{{ 'danger' if case.status == 'open' else 'warning' if case.status == 'investigating' else 'success' if case.status == 'resolved' else 'secondary' }}">
-                                {{ case.status.title() }}
+                            <span class="badge bg-{{ 'success' if case[3] == 'closed' else 'primary' }}">
+                                {{ case[3]|title }}
                             </span>
-                            {% if case.escalated %}
-                            <i class="fas fa-arrow-up text-danger ms-1" title="Escalated"></i>
-                            {% endif %}
                         </td>
-                        <td>
-                            {% if case.assigned_to %}
-                                {{ case.assigned_to }}
-                            {% else %}
-                                <span class="text-muted">Unassigned</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <small>{{ case.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-                        </td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                {% if case.status == 'open' %}
-                                <button class="btn btn-outline-warning btn-sm" onclick="assignCase({{ case.id }})">
-                                    <i class="fas fa-user"></i>
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
+                        <td>{{ case[4] }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
-        <!-- Pagination -->
-        {% if cases.pages > 1 %}
-        <nav aria-label="Cases pagination">
-            <ul class="pagination justify-content-center">
-                {% if cases.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('cases', page=cases.prev_num, status=status_filter, severity=severity_filter) }}">Previous</a>
-                </li>
-                {% endif %}
-                
-                {% for page_num in cases.iter_pages() %}
-                    {% if page_num %}
-                        {% if page_num != cases.page %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('cases', page=page_num, status=status_filter, severity=severity_filter) }}">{{ page_num }}</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% endif %}
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">…</span>
-                    </li>
-                    {% endif %}
-                {% endfor %}
-                
-                {% if cases.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('cases', page=cases.next_num, status=status_filter, severity=severity_filter) }}">Next</a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
-        
         {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+        <div class="text-center py-4">
+            <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
             <h5>No Cases Found</h5>
-            <p class="text-muted">
-                {% if status_filter or severity_filter %}
-                No cases match the current filter criteria.
-                {% else %}
-                No security cases have been generated yet. This is good news!
-                {% endif %}
-            </p>
-            {% if status_filter or severity_filter %}
-            <a href="{{ url_for('cases') }}" class="btn btn-outline-primary">Clear Filters</a>
-            {% endif %}
+            <p class="text-muted">Security cases will appear here when threats are detected.</p>
         </div>
         {% endif %}
     </div>
 </div>
-
-<!-- Quick Assignment Modal -->
-<div class="modal fade" id="assignModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Assign Case</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="assignForm" method="POST">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="assignedTo" class="form-label">Assign to:</label>
-                        <select class="form-select" id="assignedTo" name="assigned_to" required>
-                            <option value="">Select analyst...</option>
-                            <option value="security.analyst1@company.com">Security Analyst 1</option>
-                            <option value="security.analyst2@company.com">Security Analyst 2</option>
-                            <option value="security.lead@company.com">Security Lead</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="newStatus" class="form-label">Status:</label>
-                        <select class="form-select" id="newStatus" name="status">
-                            <option value="investigating">Under Investigation</option>
-                            <option value="open">Keep Open</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Assign Case</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-$(document).ready(function() {
-    $('#casesTable').DataTable({
-        "pageLength": 25,
-        "order": [[ 6, "desc" ]], // Sort by created date
-        "columnDefs": [
-            { "orderable": false, "targets": 7 } // Disable sorting on actions column
-        ]
-    });
-});
-
-function assignCase(caseId) {
-    const modal = new bootstrap.Modal(document.getElementById('assignModal'));
-    document.getElementById('assignForm').action = '/cases/' + caseId + '/update';
-    modal.show();
-}
-</script>
 {% endblock %}
