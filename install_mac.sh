@@ -58,6 +58,8 @@ mkdir -p uploads
 
 echo ""
 echo "Setting up database..."
+# Set environment variable for local SQLite database
+export DATABASE_URL="sqlite:///instance/email_guardian.db"
 python3 -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if [ $? -ne 0 ]; then

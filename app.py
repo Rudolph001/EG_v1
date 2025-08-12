@@ -19,7 +19,14 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-for-local-deve
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# Use environment DATABASE_URL or fallback to SQLite for local development
+database_url = os.environ.get("DATABASE_URL")
+if not database_url:
+    # Create instance directory if it doesn't exist
+    os.makedirs('instance', exist_ok=True)
+    database_url = 'sqlite:///instance/email_guardian.db'
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,

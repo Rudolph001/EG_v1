@@ -29,9 +29,10 @@ Preferred communication style: Simple, everyday language.
 - **Security Features**: Proxy fix middleware, session management, file upload validation
 
 ### Data Storage Solutions
-- **Primary Database**: SQLite (development) with PostgreSQL support via environment configuration
+- **Primary Database**: PostgreSQL (Replit environment) with SQLite fallback for local development
 - **Connection Management**: Connection pooling with pre-ping validation and 300-second recycle timer
 - **Schema Design**: Normalized structure with EmailRecord and RecipientRecord entities, supporting case management and audit trails
+- **Local Development**: Automatic fallback to SQLite when DATABASE_URL environment variable is not set
 
 ### Core Processing Components
 - **Pipeline Architecture**: Multi-stage processing including data ingestion, email normalization, security rule application, ML scoring, and case generation
@@ -71,3 +72,15 @@ Preferred communication style: Simple, everyday language.
 - **Environment Variables**: DATABASE_URL, SESSION_SECRET, LOG_LEVEL
 - **Upload Handling**: Secure filename generation, file type validation, size restrictions
 - **Deployment**: WSGI-compatible with ProxyFix for production reverse proxy setups
+- **Database Configuration**: Automatic PostgreSQL for Replit, SQLite fallback for local development
+
+## Recent Changes
+
+### 2025-08-12: Replit Migration Completed
+- Migrated project from Replit Agent to standard Replit environment
+- Set up PostgreSQL database with proper environment variables
+- Added automatic SQLite fallback for local development
+- Updated installation scripts to handle environment variables properly
+- Created .env.example file for local development configuration
+- Enhanced README_LOCAL.md with troubleshooting for database configuration
+- Verified application runs successfully on Replit platform

@@ -53,6 +53,8 @@ if not exist "uploads" mkdir uploads
 
 echo.
 echo Setting up database...
+REM Set environment variable for local SQLite database
+set DATABASE_URL=sqlite:///instance/email_guardian.db
 python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if %errorlevel% neq 0 (

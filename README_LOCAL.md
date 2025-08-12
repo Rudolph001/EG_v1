@@ -69,9 +69,36 @@ Once started, open your browser to: **http://localhost:5000**
 
 ## Database
 
-The application uses SQLite by default for local development. The database file (`email_guardian.db`) will be created automatically in the project directory.
+The application uses SQLite by default for local development. The database file will be created automatically in the `instance/` directory.
+
+## Environment Variables
+
+For local development, you can optionally create a `.env` file (copy from `.env.example`) to customize settings:
+
+```bash
+cp .env.example .env
+```
+
+Key variables:
+- `DATABASE_URL`: Leave empty for SQLite, or set PostgreSQL connection string
+- `SESSION_SECRET`: Use default for development, set secure value for production
 
 ## Troubleshooting
+
+### "SQLALCHEMY_DATABASE_URI must be set" Error
+
+If you encounter this error during installation, the application will now automatically fall back to SQLite. However, if you still have issues:
+
+1. **Set the environment variable manually:**
+   ```bash
+   # Windows
+   set DATABASE_URL=sqlite:///instance/email_guardian.db
+   
+   # Mac/Linux
+   export DATABASE_URL="sqlite:///instance/email_guardian.db"
+   ```
+
+2. **Then try running the installation command again**
 
 - **Python not found:** Make sure Python is installed and added to your system PATH
 - **Permission errors:** Try running as administrator (Windows) or with sudo (Mac/Linux)
