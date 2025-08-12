@@ -56,7 +56,7 @@
 
 3. **Initialize database:**
    ```bash
-   python -c "from app import app, db; app.app_context().push(); db.create_all()"
+   python setup_database.py
    ```
 
 4. **Run the application:**
@@ -88,18 +88,31 @@ Key variables:
 
 ### "SQLALCHEMY_DATABASE_URI must be set" Error
 
-If you encounter this error during installation, the application will now automatically fall back to SQLite. However, if you still have issues:
+If you encounter this error during installation, try these solutions:
 
-1. **Set the environment variable manually:**
-   ```bash
-   # Windows
-   set DATABASE_URL=sqlite:///instance/email_guardian.db
-   
-   # Mac/Linux
-   export DATABASE_URL="sqlite:///instance/email_guardian.db"
-   ```
+**Solution 1: Use the standalone database setup script**
+```bash
+# Create directories first
+mkdir uploads
+mkdir instance
 
-2. **Then try running the installation command again**
+# Run the database setup
+python setup_database.py
+```
+
+**Solution 2: Set environment variable manually**
+```bash
+# Windows
+set DATABASE_URL=sqlite:///instance/email_guardian.db
+python setup_database.py
+
+# Mac/Linux
+export DATABASE_URL="sqlite:///instance/email_guardian.db"
+python3 setup_database.py
+```
+
+**Solution 3: If you're using an older version of the files**
+Make sure you have the latest version from Replit, as the local files may be outdated and missing recent fixes.
 
 - **Python not found:** Make sure Python is installed and added to your system PATH
 - **Permission errors:** Try running as administrator (Windows) or with sudo (Mac/Linux)

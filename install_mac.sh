@@ -59,8 +59,8 @@ mkdir -p instance
 
 echo ""
 echo "Setting up database..."
-# Create database using the application's built-in fallback mechanism
-python3 -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
+# Use the standalone database setup script
+python3 setup_database.py
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to initialize database"

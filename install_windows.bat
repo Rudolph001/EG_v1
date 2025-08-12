@@ -54,8 +54,8 @@ if not exist "instance" mkdir instance
 
 echo.
 echo Setting up database...
-REM Create database using the application's built-in fallback mechanism
-python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
+REM Use the standalone database setup script
+python setup_database.py
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to initialize database
