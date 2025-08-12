@@ -57,12 +57,17 @@ if %errorlevel% neq 0 (
 
 echo.
 echo Setting up database...
-python setup_local_db.py
+python quick_setup.py
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to initialize database
-    pause
-    exit /b 1
+    echo Trying alternative setup...
+    python setup_local_db.py
+    if %errorlevel% neq 0 (
+        echo ERROR: Both database setups failed
+        pause
+        exit /b 1
+    )
 )
 
 echo.

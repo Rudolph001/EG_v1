@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Local database setup for Email Guardian
-Simplified version that works with any app.py configuration
+Quick database setup - fixes the 'case' keyword issue
+Run this if the main setup fails with "near case: syntax error"
 """
 
 import os
@@ -10,29 +10,13 @@ import sqlite3
 from pathlib import Path
 
 def main():
-    print("========================================")
-    print("Email Guardian - Local Database Setup")
-    print("========================================")
-    print()
+    print("Quick Database Setup - Fixing SQL keyword issues")
+    print("=" * 50)
     
     # Get current directory
     current_dir = Path.cwd()
-    print(f"Working directory: {current_dir}")
-    
-    # Check required files
-    required_files = ['models.py', 'routes.py', 'app.py']
-    missing_files = []
-    for file in required_files:
-        if not (current_dir / file).exists():
-            missing_files.append(file)
-    
-    if missing_files:
-        print(f"ERROR: Missing required files: {', '.join(missing_files)}")
-        print("Make sure you're in the Email Guardian project directory")
-        return False
     
     # Create directories
-    print("Creating directories...")
     directories = ['uploads', 'instance', 'logs']
     for dir_name in directories:
         dir_path = current_dir / dir_name
@@ -41,17 +25,21 @@ def main():
     
     # Set up database
     db_path = current_dir / 'instance' / 'email_guardian.db'
-    print(f"\nSetting up database: {db_path}")
+    print(f"\nCreating database: {db_path}")
+    
+    # Remove existing database if it exists and is empty/corrupted
+    if db_path.exists():
+        if db_path.stat().st_size < 1000:  # Less than 1KB, probably empty/corrupted
+            db_path.unlink()
+            print("Removed existing empty database file")
     
     try:
-        # Create SQLite database with basic tables
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
         
-        # Create basic tables that match the models
-        print("Creating database tables...")
+        print("Creating tables...")
         
-        # Email records table
+        # Email records - main table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS email_record (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,8 +53,9 @@ def main():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print("✓ email_record table")
         
-        # Recipients table
+        # Recipients
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS recipient_record (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,10 +65,11 @@ def main():
                 FOREIGN KEY (email_id) REFERENCES email_record (id)
             )
         ''')
+        print("✓ recipient_record table")
         
-        # Cases table (using quotes around 'case' because it's a SQL keyword)
+        # Cases table - using quotes to escape the keyword
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS "case" (
+            CREATE TABLE IF NOT EXISTS [case] (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 description TEXT,
@@ -89,8 +79,9 @@ def main():
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print("✓ case table (with proper escaping)")
         
-        # Security rules table
+        # Security rules
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS security_rule (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,8 +93,9 @@ def main():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print("✓ security_rule table")
         
-        # Whitelist domains table
+        # Whitelist tables
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS whitelist_domain (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,8 +103,8 @@ def main():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print("✓ whitelist_domain table")
         
-        # Whitelist senders table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS whitelist_sender (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,8 +112,9 @@ def main():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print("✓ whitelist_sender table")
         
-        # Risk keywords table
+        # Risk keywords
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS risk_keyword (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,12 +124,12 @@ def main():
                 enabled BOOLEAN DEFAULT 1
             )
         ''')
+        print("✓ risk_keyword table")
         
         conn.commit()
-        print("✓ Database tables created successfully")
         
-        # Insert some default data
-        print("Adding default configuration...")
+        # Add some default data
+        print("\nAdding default configuration...")
         
         # Default security rules
         default_rules = [
@@ -149,6 +142,7 @@ def main():
             INSERT OR IGNORE INTO security_rule (name, rule_type, pattern, severity)
             VALUES (?, ?, ?, ?)
         ''', default_rules)
+        print("✓ Security rules added")
         
         # Default whitelist domains
         default_domains = [
@@ -159,34 +153,43 @@ def main():
             INSERT OR IGNORE INTO whitelist_domain (domain)
             VALUES (?)
         ''', [(domain,) for domain in default_domains])
+        print("✓ Whitelist domains added")
         
         # Default risk keywords
         default_keywords = [
-            ('bitcoin', 'financial', 2.0), ('cryptocurrency', 'financial', 2.0),
-            ('wire transfer', 'financial', 1.5), ('verify account', 'phishing', 2.0),
-            ('click here', 'phishing', 1.5), ('download', 'malware', 1.5),
-            ('urgent', 'social_engineering', 1.0), ('confidential', 'data_exfiltration', 1.0)
+            ('bitcoin', 'financial', 2.0),
+            ('cryptocurrency', 'financial', 2.0),
+            ('wire transfer', 'financial', 1.5),
+            ('verify account', 'phishing', 2.0),
+            ('click here', 'phishing', 1.5),
+            ('download', 'malware', 1.5),
+            ('urgent', 'social_engineering', 1.0),
+            ('confidential', 'data_exfiltration', 1.0)
         ]
         
         cursor.executemany('''
             INSERT OR IGNORE INTO risk_keyword (keyword, category, weight)
             VALUES (?, ?, ?)
         ''', default_keywords)
+        print("✓ Risk keywords added")
         
         conn.commit()
         conn.close()
         
-        print("✓ Default configuration added")
-        print(f"✓ Database file size: {db_path.stat().st_size} bytes")
+        print(f"\n✓ Database created successfully!")
+        print(f"✓ File size: {db_path.stat().st_size} bytes")
+        print(f"✓ Location: {db_path}")
         
-        print("\n✓ Database setup completed successfully!")
         return True
         
     except Exception as e:
-        print(f"✗ Database setup failed: {e}")
+        print(f"✗ Error: {e}")
         return False
 
 if __name__ == '__main__':
     success = main()
-    if not success:
+    if success:
+        print("\nYou can now run: python start_local.py")
+    else:
+        print("\nSetup failed. Check the error message above.")
         sys.exit(1)
