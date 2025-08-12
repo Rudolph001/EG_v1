@@ -384,7 +384,7 @@
                                 <span class="badge bg-secondary">{{ case.status|title }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ case.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ case.created_at.strftime('%Y-%m-%d %H:%M') if case.created_at else 'N/A' }}</td>
                         <td>
                             <a href="{{ url_for('case_detail', case_id=case.id) }}" class="btn btn-sm btn-outline-primary">
                                 View
