@@ -53,13 +53,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "Creating uploads directory..."
+echo "Creating required directories..."
 mkdir -p uploads
+mkdir -p instance
 
 echo ""
 echo "Setting up database..."
-# Set environment variable for local SQLite database
-export DATABASE_URL="sqlite:///instance/email_guardian.db"
+# Create database using the application's built-in fallback mechanism
 python3 -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if [ $? -ne 0 ]; then

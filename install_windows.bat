@@ -48,13 +48,13 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Creating uploads directory...
+echo Creating required directories...
 if not exist "uploads" mkdir uploads
+if not exist "instance" mkdir instance
 
 echo.
 echo Setting up database...
-REM Set environment variable for local SQLite database
-set DATABASE_URL=sqlite:///instance/email_guardian.db
+REM Create database using the application's built-in fallback mechanism
 python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if %errorlevel% neq 0 (

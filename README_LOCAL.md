@@ -48,9 +48,10 @@
    pip install email-validator flask flask-sqlalchemy gunicorn networkx numpy pandas psycopg2-binary scikit-learn sqlalchemy werkzeug
    ```
 
-2. **Create uploads directory:**
+2. **Create required directories:**
    ```bash
    mkdir uploads
+   mkdir instance
    ```
 
 3. **Initialize database:**
