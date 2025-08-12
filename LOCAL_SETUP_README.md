@@ -18,7 +18,12 @@ For a clean installation from scratch, follow these steps:
 
 4. **Start the application:**
    ```cmd
-   python start_local.py
+   python start_local_fixed.py
+   ```
+   
+   **If you get permission errors, try:**
+   ```cmd
+   run_as_admin.bat
    ```
 
 ### Mac/Linux Installation
