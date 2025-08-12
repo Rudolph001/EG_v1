@@ -1,10 +1,12 @@
+
 import os
 
 class Config:
     """Application configuration"""
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///email_guardian.db')
+    # Database - SQLite for local development
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'email_guardian.db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f'sqlite:///{DATABASE_PATH}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Security
@@ -40,7 +42,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False  # Set to True for SQL query debugging
 
 class ProductionConfig(Config):
     """Production configuration"""

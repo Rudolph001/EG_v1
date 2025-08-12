@@ -11,7 +11,7 @@ if ! command -v python3 &> /dev/null; then
     echo "ERROR: Python 3 is not installed"
     echo "Please install Python 3.11 or higher:"
     echo "  Mac: brew install python@3.11"
-    echo "  Ubuntu/Debian: sudo apt install python3.11 python3.11-pip"
+    echo "  Ubuntu/Debian: sudo apt install python3.11 python3.11-pip python3.11-venv"
     echo "  CentOS/RHEL: sudo yum install python3.11 python3.11-pip"
     exit 1
 fi
@@ -33,19 +33,24 @@ if ! command -v pip3 &> /dev/null; then
     python3 -m ensurepip --upgrade
 fi
 
+echo "Upgrading pip..."
+python3 -m pip install --upgrade pip
+
 echo "Installing required packages..."
-pip3 install --upgrade pip
-pip3 install email-validator==2.2.0
-pip3 install flask==3.1.1
-pip3 install flask-sqlalchemy==3.1.1
-pip3 install gunicorn==23.0.0
-pip3 install networkx==3.5
-pip3 install numpy==2.3.2
-pip3 install pandas==2.3.1
-pip3 install psycopg2-binary==2.9.10
-pip3 install scikit-learn==1.7.1
-pip3 install sqlalchemy==2.0.42
-pip3 install werkzeug==3.1.3
+python3 -m pip install email-validator==2.2.0
+python3 -m pip install flask==3.1.1
+python3 -m pip install flask-sqlalchemy==3.1.1
+python3 -m pip install gunicorn==23.0.0
+python3 -m pip install networkx==3.5
+python3 -m pip install numpy==2.3.2
+python3 -m pip install pandas==2.3.1
+python3 -m pip install psycopg2-binary==2.9.10
+python3 -m pip install scikit-learn==1.7.1
+python3 -m pip install sqlalchemy==2.0.42
+python3 -m pip install werkzeug==3.1.3
+python3 -m pip install textblob==0.19.0
+python3 -m pip install xgboost==3.0.4
+python3 -m pip install imbalanced-learn==0.12.4
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to install dependencies"
@@ -53,12 +58,26 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "Creating uploads directory..."
+echo "Creating required directories..."
 mkdir -p uploads
+mkdir -p logs
+mkdir -p instance
 
 echo ""
-echo "Setting up database..."
-python3 -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
+echo "Setting up SQLite database..."
+export FLASK_ENV=development
+python3 -c "
+import sys
+sys.path.append('.')
+try:
+    from app import app, db
+    with app.app_context():
+        db.create_all()
+        print('SQLite database initialized successfully at: instance/email_guardian.db')
+except Exception as e:
+    print(f'ERROR: Failed to initialize database: {e}')
+    sys.exit(1)
+"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to initialize database"
@@ -70,8 +89,10 @@ echo "========================================"
 echo "Installation completed successfully!"
 echo "========================================"
 echo ""
+echo "Database location: $(pwd)/instance/email_guardian.db"
+echo ""
 echo "To run the application:"
-echo "  python3 main.py"
+echo "  python3 run_local.py"
 echo ""
 echo "Then open your browser to: http://localhost:5000"
 echo ""
@@ -79,4 +100,4 @@ echo "Press Enter to start the application now..."
 read
 
 echo "Starting Email Guardian..."
-python3 main.py
+python3 run_local.py

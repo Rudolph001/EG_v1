@@ -27,19 +27,24 @@ if %errorlevel% neq 0 (
 echo Python version OK
 echo.
 
+echo Upgrading pip...
+python -m pip install --upgrade pip
+
 echo Installing required packages...
-pip install --upgrade pip
-pip install email-validator==2.2.0
-pip install flask==3.1.1
-pip install flask-sqlalchemy==3.1.1
-pip install gunicorn==23.0.0
-pip install networkx==3.5
-pip install numpy==2.3.2
-pip install pandas==2.3.1
-pip install psycopg2-binary==2.9.10
-pip install scikit-learn==1.7.1
-pip install sqlalchemy==2.0.42
-pip install werkzeug==3.1.3
+python -m pip install email-validator==2.2.0
+python -m pip install flask==3.1.1
+python -m pip install flask-sqlalchemy==3.1.1
+python -m pip install gunicorn==23.0.0
+python -m pip install networkx==3.5
+python -m pip install numpy==2.3.2
+python -m pip install pandas==2.3.1
+python -m pip install psycopg2-binary==2.9.10
+python -m pip install scikit-learn==1.7.1
+python -m pip install sqlalchemy==2.0.42
+python -m pip install werkzeug==3.1.3
+python -m pip install textblob==0.19.0
+python -m pip install xgboost==3.0.4
+python -m pip install imbalanced-learn==0.12.4
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to install dependencies
@@ -48,12 +53,15 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Creating uploads directory...
+echo Creating required directories...
 if not exist "uploads" mkdir uploads
+if not exist "logs" mkdir logs
+if not exist "instance" mkdir instance
 
 echo.
-echo Setting up database...
-python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
+echo Setting up SQLite database...
+set FLASK_ENV=development
+python -c "import sys; sys.path.append('.'); from app import app, db; app.app_context().push(); db.create_all(); print('SQLite database initialized successfully at: instance\\email_guardian.db')"
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to initialize database
@@ -66,8 +74,10 @@ echo ========================================
 echo Installation completed successfully!
 echo ========================================
 echo.
+echo Database location: %cd%\instance\email_guardian.db
+echo.
 echo To run the application:
-echo   python main.py
+echo   python run_local.py
 echo.
 echo Then open your browser to: http://localhost:5000
 echo.
@@ -75,4 +85,4 @@ echo Press any key to start the application now...
 pause
 
 echo Starting Email Guardian...
-python main.py
+python run_local.py
