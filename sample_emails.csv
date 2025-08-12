@@ -1,6 +1,0 @@
-subject,sender,recipients,body,timestamp
-"Urgent Account Verification Required",suspicious@tempmail.com,"user1@company.com,user2@company.com","Your account will be suspended unless you verify immediately. Click here to verify your account details and wire transfer information.","2024-08-12 10:30:00"
-"Weekly Team Meeting",manager@company.com,team@company.com,"Hi team, our weekly meeting is scheduled for Thursday at 2 PM. Please review the agenda attached.","2024-08-12 09:15:00"
-"Congratulations! You've Won the Lottery",winner@lottery-fake.com,user@company.com,"You have won $1,000,000 in our international lottery! Send us your bank account details to claim your prize.","2024-08-12 11:45:00"
-"Project Update",colleague@company.com,project-team@company.com,"The project is progressing well. We're on track to meet our deadline next week.","2024-08-12 14:20:00"
-"URGENT: Bitcoin Investment Opportunity",crypto@investment-scam.com,"user1@company.com,user2@company.com,user3@company.com","Don't miss this urgent cryptocurrency opportunity! Wire transfer required immediately for maximum returns.","2024-08-12 16:00:00"

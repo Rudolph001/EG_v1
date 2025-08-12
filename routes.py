@@ -21,80 +21,70 @@ def allowed_file(filename):
 def dashboard():
     """Main dashboard with analytics"""
     try:
-        # Get recent statistics using direct database queries for robustness
-        total_emails = db.session.execute(db.text("SELECT COUNT(*) FROM email_records")).scalar() or 0
-        total_recipients = db.session.execute(db.text("SELECT COUNT(*) FROM recipient_records")).scalar() or 0
-        total_cases = db.session.execute(db.text("SELECT COUNT(*) FROM cases")).scalar() or 0
-        open_cases = db.session.execute(db.text("SELECT COUNT(*) FROM cases WHERE status = 'open'")).scalar() or 0
-        flagged_recipients = db.session.execute(db.text("SELECT COUNT(*) FROM recipient_records WHERE flagged = true")).scalar() or 0
-        
-        # Get recent emails for display
-        recent_emails_query = db.session.execute(db.text("""
-            SELECT subject, sender, 
-                   COALESCE(AVG(r.risk_score), 0) as avg_risk_score,
-                   BOOL_OR(r.flagged) as is_flagged,
-                   e.created_at
-            FROM email_records e
-            LEFT JOIN recipient_records r ON e.id = r.email_id
-            GROUP BY e.id, e.subject, e.sender, e.created_at
-            ORDER BY e.created_at DESC
-            LIMIT 10
-        """))
-        recent_emails = recent_emails_query.fetchall()
-        
+        # Get recent statistics
+        total_emails = EmailRecord.query.count()
+        total_recipients = RecipientRecord.query.count()
+        total_cases = Case.query.count()
+        open_cases = Case.query.filter_by(status='open').count()
+        flagged_recipients = RecipientRecord.query.filter_by(flagged=True).count()
     except Exception as e:
         logging.error(f"Database query error in dashboard: {str(e)}")
         # Return dashboard with zero stats if database query fails
-        total_emails = total_recipients = total_cases = open_cases = flagged_recipients = 0
-        recent_emails = []
+        stats = {
+            'total_emails': 0,
+            'total_recipients': 0,
+            'total_cases': 0,
+            'open_cases': 0,
+            'flagged_recipients': 0,
+            'total_senders': 0,
+            'leaver_senders': 0,
+            'sender_domains': 0,
+            'recent_cases': [],
+            'avg_security_score': 0,
+            'avg_ml_score': 0,
+            'avg_risk_score': 0,
+            'top_risk_senders': [],
+            'top_active_senders': []
+        }
+        flash('Dashboard data temporarily unavailable. Please check database connection.', 'warning')
+        return render_template('dashboard.html', stats=stats)
 
-    try:
-        # Get sender statistics with fallbacks
-        total_senders = db.session.execute(db.text("SELECT COUNT(*) FROM sender_metadata")).scalar() or 0
-        leaver_senders = db.session.execute(db.text("SELECT COUNT(*) FROM sender_metadata WHERE leaver = 'yes'")).scalar() or 0
-        sender_domains = db.session.execute(db.text("SELECT COUNT(DISTINCT email_domain) FROM sender_metadata")).scalar() or 0
-        
-        # Get recent cases with fallback
-        recent_cases_query = db.session.execute(db.text("""
-            SELECT id, title, severity, status, created_at
-            FROM cases
-            ORDER BY created_at DESC
-            LIMIT 5
-        """))
-        recent_cases = recent_cases_query.fetchall()
-        
-        # Get average risk scores with fallbacks
-        avg_security_score = db.session.execute(db.text("SELECT COALESCE(AVG(security_score), 0) FROM recipient_records")).scalar() or 0
-        avg_ml_score = db.session.execute(db.text("SELECT COALESCE(AVG(ml_score), 0) FROM recipient_records")).scalar() or 0
-        avg_risk_score = db.session.execute(db.text("SELECT COALESCE(AVG(risk_score), 0) FROM recipient_records")).scalar() or 0
-        
-        # Get top risk senders
-        top_risk_query = db.session.execute(db.text("""
-            SELECT e.sender, AVG(r.risk_score) as avg_risk, COUNT(r.id) as email_count
-            FROM email_records e
-            LEFT JOIN recipient_records r ON e.id = r.email_id
-            GROUP BY e.sender
-            ORDER BY avg_risk DESC NULLS LAST
-            LIMIT 5
-        """))
-        top_risk_senders = top_risk_query.fetchall()
-        
-        # Get top active senders
-        top_active_query = db.session.execute(db.text("""
-            SELECT sender, COUNT(*) as email_count
-            FROM email_records
-            GROUP BY sender
-            ORDER BY email_count DESC
-            LIMIT 5
-        """))
-        top_active_senders = top_active_query.fetchall()
-        
-    except Exception as e:
-        logging.error(f"Additional dashboard query error: {str(e)}")
-        total_senders = leaver_senders = sender_domains = 0
-        recent_cases = []
-        avg_security_score = avg_ml_score = avg_risk_score = 0
-        top_risk_senders = top_active_senders = []
+    # Get sender statistics
+    total_senders = SenderMetadata.query.count()
+    leaver_senders = SenderMetadata.query.filter_by(leaver='yes').count()
+    
+    # Leaver count is based on sender metadata only
+
+    # Get unique sender domains
+    sender_domains = db.session.query(func.count(func.distinct(SenderMetadata.email_domain))).scalar() or 0
+
+    # Get recent cases
+    recent_cases = Case.query.order_by(Case.created_at.desc()).limit(5).all()
+
+    # Get processing statistics for the last 7 days
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+
+    # Get average risk scores
+    avg_security_score = db.session.query(func.avg(RecipientRecord.security_score)).scalar() or 0
+    avg_ml_score = db.session.query(func.avg(RecipientRecord.ml_score)).scalar() or 0
+    avg_risk_score = db.session.query(func.avg(RecipientRecord.risk_score)).scalar() or 0
+
+    # Get top risk senders (senders with highest average risk scores)
+    top_risk_senders = db.session.query(
+        EmailRecord.sender,
+        func.avg(RecipientRecord.risk_score).label('avg_risk'),
+        func.count(RecipientRecord.id).label('email_count')
+    ).join(RecipientRecord).group_by(EmailRecord.sender).order_by(
+        func.avg(RecipientRecord.risk_score).desc()
+    ).limit(5).all()
+
+    # Get sender activity (top senders by email volume)
+    top_active_senders = db.session.query(
+        EmailRecord.sender,
+        func.count(EmailRecord.id).label('email_count')
+    ).group_by(EmailRecord.sender).order_by(
+        func.count(EmailRecord.id).desc()
+    ).limit(5).all()
 
     stats = {
         'total_emails': total_emails,
@@ -102,12 +92,10 @@ def dashboard():
         'total_cases': total_cases,
         'open_cases': open_cases,
         'flagged_recipients': flagged_recipients,
-        'flagged_emails': flagged_recipients,  # Add this for template compatibility
         'total_senders': total_senders,
         'leaver_senders': leaver_senders,
         'sender_domains': sender_domains,
         'recent_cases': recent_cases,
-        'recent_emails': recent_emails,  # Add this for template compatibility
         'avg_security_score': round(avg_security_score, 2),
         'avg_ml_score': round(avg_ml_score, 2),
         'avg_risk_score': round(avg_risk_score, 2),

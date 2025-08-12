@@ -27,47 +27,38 @@ if %errorlevel% neq 0 (
 echo Python version OK
 echo.
 
-echo Creating required directories...
-if not exist "uploads" mkdir uploads
-if not exist "instance" mkdir instance
-if not exist "logs" mkdir logs
-
-echo.
 echo Installing required packages...
 pip install --upgrade pip
 pip install email-validator==2.2.0
 pip install flask==3.1.1
 pip install flask-sqlalchemy==3.1.1
+pip install gunicorn==23.0.0
 pip install networkx==3.5
 pip install numpy==2.3.2
 pip install pandas==2.3.1
+pip install psycopg2-binary==2.9.10
 pip install scikit-learn==1.7.1
 pip install sqlalchemy==2.0.42
 pip install werkzeug==3.1.3
-pip install xgboost==2.1.3
-pip install textblob==0.18.0
-pip install imbalanced-learn==0.12.4
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to install dependencies
-    echo Run as Administrator if needed
     pause
     exit /b 1
 )
 
 echo.
+echo Creating uploads directory...
+if not exist "uploads" mkdir uploads
+
+echo.
 echo Setting up database...
-python quick_setup.py
+python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to initialize database
-    echo Trying alternative setup...
-    python setup_local_db.py
-    if %errorlevel% neq 0 (
-        echo ERROR: Both database setups failed
-        pause
-        exit /b 1
-    )
+    pause
+    exit /b 1
 )
 
 echo.
@@ -76,7 +67,7 @@ echo Installation completed successfully!
 echo ========================================
 echo.
 echo To run the application:
-echo   python start_local_fixed.py
+echo   python main.py
 echo.
 echo Then open your browser to: http://localhost:5000
 echo.
@@ -84,4 +75,4 @@ echo Press any key to start the application now...
 pause
 
 echo Starting Email Guardian...
-python simple_local_app.py
+python main.py

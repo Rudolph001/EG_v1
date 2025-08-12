@@ -33,36 +33,32 @@ if ! command -v pip3 &> /dev/null; then
     python3 -m ensurepip --upgrade
 fi
 
-echo "Creating required directories..."
-mkdir -p uploads
-mkdir -p instance
-mkdir -p logs
-
-echo ""
 echo "Installing required packages..."
 pip3 install --upgrade pip
 pip3 install email-validator==2.2.0
 pip3 install flask==3.1.1
 pip3 install flask-sqlalchemy==3.1.1
+pip3 install gunicorn==23.0.0
 pip3 install networkx==3.5
 pip3 install numpy==2.3.2
 pip3 install pandas==2.3.1
+pip3 install psycopg2-binary==2.9.10
 pip3 install scikit-learn==1.7.1
 pip3 install sqlalchemy==2.0.42
 pip3 install werkzeug==3.1.3
-pip3 install xgboost==2.1.3
-pip3 install textblob==0.18.0
-pip3 install imbalanced-learn==0.12.4
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to install dependencies"
-    echo "Try using --user flag or virtual environment"
     exit 1
 fi
 
 echo ""
+echo "Creating uploads directory..."
+mkdir -p uploads
+
+echo ""
 echo "Setting up database..."
-python3 setup_local_db.py
+python3 -c "from app import app, db; app.app_context().push(); db.create_all(); print('Database initialized successfully')"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to initialize database"
@@ -75,7 +71,7 @@ echo "Installation completed successfully!"
 echo "========================================"
 echo ""
 echo "To run the application:"
-echo "  python3 start_local.py"
+echo "  python3 main.py"
 echo ""
 echo "Then open your browser to: http://localhost:5000"
 echo ""
@@ -83,4 +79,4 @@ echo "Press Enter to start the application now..."
 read
 
 echo "Starting Email Guardian..."
-python3 start_local.py
+python3 main.py
