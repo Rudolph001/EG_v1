@@ -13,29 +13,29 @@
                 <h5>CSV File Upload</h5>
             </div>
             <div class="card-body">
-                <p class="text-info">
-                    <i class="fas fa-info-circle"></i> 
-                    Upload functionality requires the full application with processing pipeline. 
-                    This is a simplified viewer for your existing database.
-                </p>
+                <div class="alert alert-success">
+                    <h6>CSV Upload Ready!</h6>
+                    <p>Upload your email CSV file to process and analyze email data with risk scoring.</p>
+                </div>
                 
                 <div class="alert alert-secondary">
                     <h6>Expected CSV Format:</h6>
                     <ul>
                         <li><strong>subject</strong> - Email subject line</li>
-                        <li><strong>sender</strong> - Sender email address</li>
-                        <li><strong>recipients</strong> - Recipient email addresses</li>
+                        <li><strong>sender</strong> - Sender email address (required)</li>
+                        <li><strong>recipients</strong> - Recipient email addresses (comma-separated)</li>
                         <li><strong>body</strong> - Email body content</li>
-                        <li><strong>timestamp</strong> - Email timestamp</li>
+                        <li><strong>timestamp</strong> - Email timestamp (optional)</li>
                     </ul>
                 </div>
 
-                <form>
+                <form method="post" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="csvFile" class="form-label">Choose CSV File</label>
-                        <input type="file" class="form-control" id="csvFile" accept=".csv" disabled>
+                        <label for="file" class="form-label">Choose CSV File</label>
+                        <input type="file" class="form-control" name="file" id="file" accept=".csv" required>
+                        <div class="form-text">Maximum file size: 16MB</div>
                     </div>
-                    <button type="submit" class="btn btn-primary" disabled>
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-upload"></i> Upload and Process
                     </button>
                 </form>
@@ -43,13 +43,13 @@
                 <hr>
                 
                 <div class="mt-3">
-                    <h6>Alternative Options:</h6>
-                    <p>To enable full upload and processing functionality:</p>
-                    <ol>
-                        <li>Install the complete application with all dependencies</li>
-                        <li>Run the full application server</li>
-                        <li>Use the production upload feature</li>
-                    </ol>
+                    <h6>Processing Features:</h6>
+                    <ul>
+                        <li><i class="fas fa-shield-alt text-success"></i> Risk scoring based on subject and content analysis</li>
+                        <li><i class="fas fa-flag text-warning"></i> Automatic flagging of suspicious emails</li>
+                        <li><i class="fas fa-exclamation-triangle text-danger"></i> Case generation for high-risk emails</li>
+                        <li><i class="fas fa-users text-info"></i> Recipient tracking and analysis</li>
+                    </ul>
                 </div>
             </div>
         </div>

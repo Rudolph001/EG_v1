@@ -7,8 +7,12 @@ Creates a minimal Flask app that works with your existing database
 import os
 import sys
 import sqlite3
+import csv
+import io
 from pathlib import Path
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from werkzeug.utils import secure_filename
 
 def create_simple_app():
     """Create a simple Flask app without SQLAlchemy complications"""
@@ -103,9 +107,11 @@ def create_simple_app():
                 'recent_emails': []
             })
     
-    @app.route('/upload')
+    @app.route('/upload', methods=['GET', 'POST'])
     def upload_page():
         """File upload page"""
+        if request.method == 'POST':
+            return handle_file_upload()
         return render_template('upload.html')
     
     @app.route('/emails')
@@ -201,7 +207,140 @@ def create_simple_app():
             'database': 'connected' if db_path.exists() else 'missing'
         })
     
-    print("✓ Routes configured")
+    def handle_file_upload():
+        """Handle CSV file upload and processing"""
+        try:
+            if 'file' not in request.files:
+                flash('No file selected', 'error')
+                return redirect(url_for('upload_page'))
+            
+            file = request.files['file']
+            if file.filename == '':
+                flash('No file selected', 'error')
+                return redirect(url_for('upload_page'))
+            
+            if not file.filename.lower().endswith('.csv'):
+                flash('Please upload a CSV file', 'error')
+                return redirect(url_for('upload_page'))
+            
+            # Read CSV content
+            csv_content = file.read().decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(csv_content))
+            
+            # Process emails
+            emails_processed = 0
+            emails_added = 0
+            
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            for row in csv_reader:
+                emails_processed += 1
+                
+                # Extract email data
+                subject = row.get('subject', '').strip()
+                sender = row.get('sender', '').strip()
+                recipients = row.get('recipients', '').strip()
+                body = row.get('body', '').strip()
+                timestamp_str = row.get('timestamp', '').strip()
+                
+                # Skip if no sender
+                if not sender:
+                    continue
+                
+                # Parse timestamp
+                email_timestamp = None
+                if timestamp_str:
+                    try:
+                        email_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    except:
+                        try:
+                            email_timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        except:
+                            pass
+                
+                # Calculate basic risk score
+                risk_score = calculate_risk_score(subject, sender, body, recipients)
+                flagged = risk_score > 5.0
+                case_generated = risk_score > 8.0
+                
+                # Insert email record
+                cursor.execute('''
+                    INSERT INTO email_record (subject, sender, body, timestamp, risk_score, flagged, case_generated, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (subject, sender, body, email_timestamp, risk_score, flagged, case_generated, datetime.now()))
+                
+                email_id = cursor.lastrowid
+                emails_added += 1
+                
+                # Insert recipients
+                if recipients:
+                    recipient_list = [r.strip() for r in recipients.split(',')]
+                    for recipient in recipient_list:
+                        if recipient:
+                            cursor.execute('''
+                                INSERT INTO recipient_record (email_id, recipient_email, recipient_type)
+                                VALUES (?, ?, ?)
+                            ''', (email_id, recipient, 'to'))
+                
+                # Generate case if high risk
+                if case_generated:
+                    case_title = f"High Risk Email from {sender}"
+                    case_description = f"Subject: {subject}\nRisk Score: {risk_score:.1f}\nSender: {sender}"
+                    
+                    cursor.execute('''
+                        INSERT INTO [case] (title, description, severity, status, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (case_title, case_description, 'high', 'open', datetime.now()))
+            
+            conn.commit()
+            conn.close()
+            
+            flash(f'Successfully processed {emails_processed} emails, added {emails_added} new records', 'success')
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            flash(f'Error processing file: {str(e)}', 'error')
+            return redirect(url_for('upload_page'))
+    
+    def calculate_risk_score(subject, sender, body, recipients):
+        """Calculate basic risk score for email"""
+        score = 0.0
+        
+        # Check subject for suspicious keywords
+        if subject:
+            suspicious_subjects = ['urgent', 'verify', 'suspend', 'click here', 'winner', 'lottery', 'bitcoin', 'cryptocurrency']
+            for keyword in suspicious_subjects:
+                if keyword.lower() in subject.lower():
+                    score += 2.0
+        
+        # Check body for suspicious content
+        if body:
+            suspicious_body = ['wire transfer', 'bank account', 'verify account', 'click link', 'download attachment', 'urgent action']
+            for keyword in suspicious_body:
+                if keyword.lower() in body.lower():
+                    score += 1.5
+        
+        # Check for external sender patterns
+        if sender:
+            # Simple check for suspicious domains
+            suspicious_domains = ['tempmail', '10minutemail', 'guerrillamail', 'mailinator']
+            sender_domain = sender.split('@')[-1] if '@' in sender else ''
+            for domain in suspicious_domains:
+                if domain in sender_domain.lower():
+                    score += 3.0
+        
+        # Check for multiple recipients (potential spam)
+        if recipients:
+            recipient_count = len([r for r in recipients.split(',') if r.strip()])
+            if recipient_count > 5:
+                score += 2.0
+            elif recipient_count > 10:
+                score += 4.0
+        
+        return min(score, 10.0)  # Cap at 10.0
+
+    print("✓ Routes and upload handler configured")
     return app
 
 def main():
