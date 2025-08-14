@@ -71,3 +71,5 @@ Preferred communication style: Simple, everyday language.
 - **Environment Variables**: DATABASE_URL, SESSION_SECRET, LOG_LEVEL
 - **Upload Handling**: Secure filename generation, file type validation, size restrictions
 - **Deployment**: WSGI-compatible with ProxyFix for production reverse proxy setups
+- **Database Compatibility**: Automatic schema compatibility between PostgreSQL (Replit) and SQLite (local development)
+- **Local Setup**: Automated local database setup with `setup_local_db.py` script

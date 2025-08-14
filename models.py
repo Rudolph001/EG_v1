@@ -1,6 +1,7 @@
 from app import db
 from datetime import datetime
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Text
+import os
 
 class EmailRecord(db.Model):
     __tablename__ = 'email_records'
@@ -63,9 +64,9 @@ class RecipientRecord(db.Model):
     flagged = db.Column(db.Boolean, default=False)
     case_generated = db.Column(db.Boolean, default=False)
     
-    # Rule matching results
-    matched_security_rules = db.Column(JSON)  # List of matched security rule names
-    matched_risk_keywords = db.Column(JSON)  # List of matched risk keywords
+    # Rule matching results (using Text for SQLite compatibility)
+    matched_security_rules = db.Column(Text if os.environ.get('DATABASE_URL', '').startswith('sqlite') else JSON)
+    matched_risk_keywords = db.Column(Text if os.environ.get('DATABASE_URL', '').startswith('sqlite') else JSON)
     whitelist_reason = db.Column(db.String(255))  # Why it was whitelisted
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -83,9 +84,9 @@ class Case(db.Model):
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     
-    # Risk details
-    risk_factors = db.Column(JSON)
-    recommended_actions = db.Column(JSON)
+    # Risk details (using Text for SQLite compatibility)
+    risk_factors = db.Column(Text if os.environ.get('DATABASE_URL', '').startswith('sqlite') else JSON)
+    recommended_actions = db.Column(Text if os.environ.get('DATABASE_URL', '').startswith('sqlite') else JSON)
     
     # Workflow
     assigned_to = db.Column(db.String(100))

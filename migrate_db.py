@@ -1,35 +1,20 @@
 
+"""
+Legacy migration script - replaced by database_sync.py
+This file is kept for compatibility but database_sync.py is recommended.
+"""
+
 from app import app, db
 from sqlalchemy import text, inspect
 import logging
 
 def migrate_database():
-    """Apply database migrations"""
+    """Apply database migrations - DEPRECATED: Use database_sync.py instead"""
+    logging.warning("migrate_db.py is deprecated. Use 'python database_sync.py' instead.")
+    
     with app.app_context():
         try:
-            # Check if new columns exist, add them if not
-            inspector = inspect(db.engine)
-            recipient_columns = [col['name'] for col in inspector.get_columns('recipient_records')]
-
-            if 'matched_security_rules' not in recipient_columns:
-                with db.engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE recipient_records ADD COLUMN matched_security_rules JSON'))
-                    conn.commit()
-                logging.info("Added matched_security_rules column")
-
-            if 'matched_risk_keywords' not in recipient_columns:
-                with db.engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE recipient_records ADD COLUMN matched_risk_keywords JSON'))
-                    conn.commit()
-                logging.info("Added matched_risk_keywords column")
-
-            if 'whitelist_reason' not in recipient_columns:
-                with db.engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE recipient_records ADD COLUMN whitelist_reason VARCHAR(255)'))
-                    conn.commit()
-                logging.info("Added whitelist_reason column")
-
-            # Create any missing tables
+            # Simply create all tables - SQLAlchemy handles schema updates
             db.create_all()
             logging.info("Database migration completed successfully!")
 
