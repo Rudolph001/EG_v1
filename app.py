@@ -21,6 +21,12 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Configure the database
 # Import config for fallback database setup
 from config import Config
+
+# Ensure instance directory exists for SQLite
+if not os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_URL").startswith('sqlite'):
+    instance_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", Config.SQLALCHEMY_DATABASE_URI)
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,

@@ -14,7 +14,8 @@ def ensure_database():
     try:
         with app.app_context():
             # Check if database exists and is accessible
-            db.engine.execute('SELECT 1')
+            with db.engine.connect() as conn:
+                conn.execute(db.text('SELECT 1'))
             print("✓ Database connection verified")
     except Exception as e:
         print(f"⚠ Database issue detected: {e}")
@@ -25,6 +26,7 @@ def ensure_database():
                 print("✓ Database initialized successfully")
         except Exception as init_error:
             print(f"✗ Failed to initialize database: {init_error}")
+            print("Run 'python setup_local_db.py' first to set up the database")
             sys.exit(1)
 
 if __name__ == '__main__':
