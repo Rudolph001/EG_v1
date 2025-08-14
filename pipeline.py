@@ -101,8 +101,12 @@ class EmailProcessingPipeline:
             if missing_columns:
                 raise ValueError(f"Missing required columns: {missing_columns}")
 
-            # Convert timestamp
+            # Convert timestamp and handle NaT values for PostgreSQL compatibility
             df['_time'] = pd.to_datetime(df['_time'], errors='coerce')
+            
+            # Replace NaT (Not a Time) values with a default timestamp for PostgreSQL compatibility
+            default_timestamp = pd.Timestamp('2025-01-01 00:00:00')
+            df['_time'] = df['_time'].fillna(default_timestamp)
 
             # Fill NaN values and convert "-" to empty strings (treat as null)
             df = df.fillna('')
