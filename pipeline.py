@@ -297,7 +297,7 @@ class EmailProcessingPipeline:
         risk_score = 0.0
         matched_keywords = []
 
-        text_to_analyze = f"{email_record.subject} {email_record.attachments} {recipient_record.wordlist_subject} {recipient_record.wordlist_attachment}".lower()
+        text_to_analyze = f"{email_record.subject} {email_record.attachments}".lower()
 
         for keyword_data in self._cached_risk_keywords_data:
             if keyword_data['keyword'].lower() in text_to_analyze:
