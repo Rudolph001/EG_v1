@@ -201,7 +201,7 @@
                                     <nav aria-label="breadcrumb">
                                         <ol class="breadcrumb mb-0 small">
                                             <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-decoration-none">Home</a></li>
-                                            <li class="breadcrumb-item active" aria-current="page">{% block page_title %}Dashboard{% endblock %}</li>
+                                            <li class="breadcrumb-item active" aria-current="page">{% block breadcrumb_title %}{% block page_title %}Dashboard{% endblock %}{% endblock %}</li>
                                         </ol>
                                     </nav>
                                 </div>
