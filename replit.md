@@ -8,6 +8,19 @@ Email Guardian is a Flask-based web application designed for email security anal
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (August 2025)
+
+### Database Compatibility Implementation
+- **Date**: August 14, 2025
+- **Issue Resolved**: "Dashboard data temporarily unavailable" error on local SQLite setups
+- **Changes Made**:
+  - Updated database models for automatic SQLite/PostgreSQL compatibility
+  - Enhanced installation scripts (`install_windows.bat`, `install_mac.sh`) to automatically run database setup
+  - Created `setup_local_db.py` for comprehensive local database initialization
+  - Created `fix_local_setup.py` for troubleshooting database issues
+  - Improved error handling in dashboard routes with better user guidance
+  - Updated `LOCAL_SETUP.md` with automated installation instructions
+
 ## System Architecture
 
 ### Frontend Architecture

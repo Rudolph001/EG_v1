@@ -59,14 +59,19 @@ if not exist "logs" mkdir logs
 if not exist "instance" mkdir instance
 
 echo.
-echo Setting up SQLite database...
+echo Setting up SQLite database with default data...
 set FLASK_ENV=development
-python -c "import sys; sys.path.append('.'); from app import app, db; app.app_context().push(); db.create_all(); print('SQLite database initialized successfully at: instance\\email_guardian.db')"
+python setup_local_db.py
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to initialize database
-    pause
-    exit /b 1
+    echo Trying alternative setup method...
+    python -c "import sys; sys.path.append('.'); from app import app, db; app.app_context().push(); db.create_all(); print('Basic SQLite database initialized at: instance\\email_guardian.db')"
+    if %errorlevel% neq 0 (
+        echo ERROR: Database setup completely failed
+        pause
+        exit /b 1
+    )
 )
 
 echo.
@@ -75,11 +80,15 @@ echo Installation completed successfully!
 echo ========================================
 echo.
 echo Database location: %cd%\instance\email_guardian.db
+echo Default security rules and configuration have been added
 echo.
 echo To run the application:
 echo   python run_local.py
 echo.
 echo Then open your browser to: http://localhost:5000
+echo.
+echo If you see "Dashboard data temporarily unavailable":
+echo   python fix_local_setup.py
 echo.
 echo Press any key to start the application now...
 pause

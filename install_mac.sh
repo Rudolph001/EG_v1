@@ -64,24 +64,29 @@ mkdir -p logs
 mkdir -p instance
 
 echo ""
-echo "Setting up SQLite database..."
+echo "Setting up SQLite database with default data..."
 export FLASK_ENV=development
-python3 -c "
+python3 setup_local_db.py
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to initialize database with setup script"
+    echo "Trying alternative setup method..."
+    python3 -c "
 import sys
 sys.path.append('.')
 try:
     from app import app, db
     with app.app_context():
         db.create_all()
-        print('SQLite database initialized successfully at: instance/email_guardian.db')
+        print('Basic SQLite database initialized at: instance/email_guardian.db')
 except Exception as e:
     print(f'ERROR: Failed to initialize database: {e}')
     sys.exit(1)
 "
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to initialize database"
-    exit 1
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Database setup completely failed"
+        exit 1
+    fi
 fi
 
 echo ""
@@ -90,11 +95,15 @@ echo "Installation completed successfully!"
 echo "========================================"
 echo ""
 echo "Database location: $(pwd)/instance/email_guardian.db"
+echo "Default security rules and configuration have been added"
 echo ""
 echo "To run the application:"
 echo "  python3 run_local.py"
 echo ""
 echo "Then open your browser to: http://localhost:5000"
+echo ""
+echo "If you see 'Dashboard data temporarily unavailable':"
+echo "  python3 fix_local_setup.py"
 echo ""
 echo "Press Enter to start the application now..."
 read

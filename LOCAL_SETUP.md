@@ -9,24 +9,42 @@ This guide will help you set up Email Guardian on your local machine using SQLit
 
 ## Installation Steps
 
-### 1. Clone or Download the Project
+### Quick Installation (Recommended)
+
+**For Windows:**
 ```bash
-# Download the project files to your local machine
+# Run the automated installer
+install_windows.bat
 ```
+
+**For Mac/Linux:**
+```bash
+# Make the installer executable and run it
+chmod +x install_mac.sh
+./install_mac.sh
+```
+
+These installers will automatically:
+- Check Python version requirements
+- Install all dependencies
+- Set up the SQLite database with default data
+- Start the application
+
+### Manual Installation
+
+If you prefer to install manually:
+
+### 1. Download the Project
+Download all project files to your local machine
 
 ### 2. Install Dependencies
 ```bash
 # Install required Python packages
-pip install -r requirements.txt
+pip install flask flask-sqlalchemy sqlalchemy pandas numpy scikit-learn xgboost textblob gunicorn werkzeug email-validator networkx psycopg2-binary imbalanced-learn
 ```
 
-If you don't have a requirements.txt file, install the packages manually:
-```bash
-pip install flask flask-sqlalchemy sqlalchemy pandas numpy scikit-learn xgboost textblob gunicorn werkzeug
-```
-
-### 3. Set Up Local Database
-Run the database setup script to create your SQLite database:
+### 3. Set Up Database (IMPORTANT)
+This step is crucial to avoid the "Dashboard data temporarily unavailable" error:
 ```bash
 python setup_local_db.py
 ```
@@ -37,7 +55,6 @@ This will:
 - Add default security rules and configuration data
 
 ### 4. Run the Application
-Start the application locally:
 ```bash
 python run_local.py
 ```
