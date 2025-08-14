@@ -6,6 +6,7 @@ from flask import session
 from app import db
 from models import *
 from ml_engines import BasicMLEngine, AdvancedMLEngine
+from utils import clean_csv_value, is_empty_value, safe_split_csv
 import re
 
 class EmailProcessingPipeline:
@@ -103,8 +104,11 @@ class EmailProcessingPipeline:
             # Convert timestamp
             df['_time'] = pd.to_datetime(df['_time'], errors='coerce')
 
-            # Fill NaN values
+            # Fill NaN values and convert "-" to empty strings (treat as null)
             df = df.fillna('')
+            
+            # Replace all "-" values with empty strings to treat as null
+            df = df.replace('-', '')
 
             self.logger.info(f"Loaded {len(df)} records from CSV with new format")
             return df
@@ -120,21 +124,17 @@ class EmailProcessingPipeline:
         normalized_rows = []
 
         for _, row in df.iterrows():
-            # Split recipients (comma-separated)
-            recipients_str = str(row['recipients']) if row['recipients'] else ''
-            recipients = [r.strip() for r in recipients_str.split(',') if r.strip()]
-            
+            # Split recipients (comma-separated), treating '-' as null
+            recipients = safe_split_csv(row['recipients'])
             if not recipients:
                 recipients = ['']
 
-            # Split attachments (comma-separated) - store as single string per email
-            attachments_str = str(row['attachments']) if row['attachments'] else ''
-            attachments_list = [a.strip() for a in attachments_str.split(',') if a.strip()]
+            # Split attachments (comma-separated), treating '-' as null
+            attachments_list = safe_split_csv(row['attachments'])
             attachments_combined = ', '.join(attachments_list) if attachments_list else ''
 
-            # Split policy names (comma-separated) - store as single string per recipient
-            policy_name_str = str(row['policy_name']) if row['policy_name'] else ''
-            policy_names = [p.strip() for p in policy_name_str.split(',') if p.strip()]
+            # Split policy names (comma-separated), treating '-' as null
+            policy_names = safe_split_csv(row['policy_name'])
             policy_names_combined = ', '.join(policy_names) if policy_names else ''
 
             # Create normalized record for each recipient
@@ -162,16 +162,16 @@ class EmailProcessingPipeline:
         """Process individual recipient through stages 3-10"""
         recipient_record = RecipientRecord(
             email_id=email_record.id,
-            recipient=recipient_data.get('recipients', ''),
-            recipient_email_domain=recipient_data.get('recipients_email_domain', ''),
-            leaver=recipient_data.get('leaver', ''),
-            termination_date=recipient_data.get('termination_date', ''),  # Updated field name
-            bunit=recipient_data.get('bunit', ''),
-            department=recipient_data.get('department', ''),
-            user_response=recipient_data.get('user_response', ''),
-            final_outcome=recipient_data.get('final_outcome', ''),
-            policy_name=recipient_data.get('policy_name', ''),
-            justifications=recipient_data.get('justifications', '')
+            recipient=clean_csv_value(recipient_data.get('recipients', '')),
+            recipient_email_domain=clean_csv_value(recipient_data.get('recipients_email_domain', '')),
+            leaver=clean_csv_value(recipient_data.get('leaver', '')),
+            termination_date=clean_csv_value(recipient_data.get('termination_date', '')),
+            bunit=clean_csv_value(recipient_data.get('bunit', '')),
+            department=clean_csv_value(recipient_data.get('department', '')),
+            user_response=clean_csv_value(recipient_data.get('user_response', '')),
+            final_outcome=clean_csv_value(recipient_data.get('final_outcome', '')),
+            policy_name=clean_csv_value(recipient_data.get('policy_name', '')),
+            justifications=clean_csv_value(recipient_data.get('justifications', ''))
         )
 
         # Stage 3: Exclusion Rules
@@ -395,11 +395,11 @@ class EmailProcessingPipeline:
         """Create email record from first recipient data"""
         return EmailRecord(
             timestamp=first_recipient_data['_time'],
-            sender=first_recipient_data.get('sender', ''),
-            subject=first_recipient_data.get('subject', ''),
-            attachments=first_recipient_data.get('attachments', ''),
-            original_recipients=first_recipient_data.get('recipients', ''),
-            time_month=first_recipient_data.get('time_month', ''),
+            sender=clean_csv_value(first_recipient_data.get('sender', '')),
+            subject=clean_csv_value(first_recipient_data.get('subject', '')),
+            attachments=clean_csv_value(first_recipient_data.get('attachments', '')),
+            original_recipients=clean_csv_value(first_recipient_data.get('recipients', '')),
+            time_month=clean_csv_value(first_recipient_data.get('time_month', '')),
             pipeline_status='processing'
         )
 

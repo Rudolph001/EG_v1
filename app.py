@@ -13,10 +13,28 @@ class Base(DeclarativeBase):
 
 db = SQLAlchemy(model_class=Base)
 
+# Template filters for handling null values
+def is_empty_value(value):
+    """Check if a value should be considered empty (including '-')"""
+    if value is None:
+        return True
+    str_value = str(value).strip()
+    return str_value == '' or str_value == '-'
+
+def display_value(value, default='N/A'):
+    """Display value with default for empty values"""
+    if is_empty_value(value):
+        return default
+    return str(value).strip()
+
 # Create the app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-for-local-development-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# Add template filters
+app.jinja_env.filters['is_empty'] = is_empty_value
+app.jinja_env.filters['display_value'] = display_value
 
 # Configure the database
 # Import config for fallback database setup

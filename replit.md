@@ -21,6 +21,18 @@ Preferred communication style: Simple, everyday language.
   - Improved error handling in dashboard routes with better user guidance
   - Updated `LOCAL_SETUP.md` with automated installation instructions
 
+### CSV Format Update & Null Value Handling
+- **Date**: August 14, 2025
+- **Changes Made**:
+  - **New CSV Fields**: Added support for `time_month`, `user_response`, `final_outcome`, `termination_date` (renamed from `termination`)
+  - **Comma-Separated Values**: Enhanced processing for comma-separated values in `attachments`, `recipients`, and `policy_name` fields
+  - **Null Value Handling**: Implemented comprehensive "-" to null conversion throughout the application
+    - Created `utils.py` with `clean_csv_value()`, `is_empty_value()`, `safe_split_csv()` helper functions
+    - Added template filters `display_value` and `is_empty` for consistent UI handling
+    - Updated pipeline processing to automatically convert "-" values to empty strings
+    - Created `clean_null_values.py` script to clean existing database records
+  - **Database Migration**: Updated schema with `migrate_new_csv_format.py` for new field compatibility
+
 ## System Architecture
 
 ### Frontend Architecture
