@@ -64,29 +64,56 @@ mkdir -p logs
 mkdir -p instance
 
 echo ""
-echo "Setting up SQLite database with default data..."
+echo "========================================"
+echo "Setting up SQLite database..."
+echo "========================================"
 export FLASK_ENV=development
-python3 setup_local_db.py
+
+echo "Running primary database setup..."
+python3 inline_db_setup.py
+DB_SETUP_RESULT=$?
+
+if [ $DB_SETUP_RESULT -ne 0 ]; then
+    echo ""
+    echo "WARNING: Primary setup failed, trying setup_local_db.py..."
+    python3 setup_local_db.py
+    DB_SETUP_RESULT2=$?
+    
+    if [ $DB_SETUP_RESULT2 -ne 0 ]; then
+        echo ""
+        echo "WARNING: setup_local_db.py also failed, trying fix_local_setup.py..."
+        python3 -c "import os; os.makedirs('instance', exist_ok=True); print('Created instance directory')"
+        python3 fix_local_setup.py
+        
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: All database setup methods failed"
+            echo "Please manually run one of these:"
+            echo "  python3 inline_db_setup.py"
+            echo "  python3 setup_local_db.py"
+            echo "  python3 fix_local_setup.py"
+            exit 1
+        fi
+    fi
+fi
+
+echo ""
+echo "Verifying database setup..."
+python3 -c "
+import os
+os.environ.setdefault('DATABASE_URL', 'sqlite:///./instance/email_guardian.db')
+from app import app, db
+from models import SecurityRule
+with app.app_context():
+    count = SecurityRule.query.count()
+    print(f'Database has {count} security rules')
+"
 
 if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to initialize database with setup script"
-    echo "Trying alternative setup method..."
-    python3 -c "
-import sys
-sys.path.append('.')
-try:
-    from app import app, db
-    with app.app_context():
-        db.create_all()
-        print('Basic SQLite database initialized at: instance/email_guardian.db')
-except Exception as e:
-    print(f'ERROR: Failed to initialize database: {e}')
-    sys.exit(1)
-"
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Database setup completely failed"
-        exit 1
-    fi
+    echo "WARNING: Database verification failed"
+    echo "You may need to run: python3 fix_local_setup.py"
+else
+    echo "✓ Database setup verified successfully"
 fi
 
 echo ""
@@ -104,6 +131,7 @@ echo "Then open your browser to: http://localhost:5000"
 echo ""
 echo "If you see 'Dashboard data temporarily unavailable':"
 echo "  python3 fix_local_setup.py"
+echo "  OR see: DATABASE_TROUBLESHOOTING.md"
 echo ""
 echo "Press Enter to start the application now..."
 read

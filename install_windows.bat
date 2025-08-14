@@ -59,19 +59,49 @@ if not exist "logs" mkdir logs
 if not exist "instance" mkdir instance
 
 echo.
-echo Setting up SQLite database with default data...
+echo ========================================
+echo Setting up SQLite database...
+echo ========================================
 set FLASK_ENV=development
-python setup_local_db.py
+
+echo Running primary database setup...
+python inline_db_setup.py
+set DB_SETUP_RESULT=%errorlevel%
+
+if %DB_SETUP_RESULT% neq 0 (
+    echo.
+    echo WARNING: Primary setup failed, trying setup_local_db.py...
+    python setup_local_db.py
+    set DB_SETUP_RESULT2=%errorlevel%
+    
+    if %DB_SETUP_RESULT2% neq 0 (
+        echo.
+        echo WARNING: setup_local_db.py also failed, trying fix_local_setup.py...
+        python -c "import os; os.makedirs('instance', exist_ok=True); print('Created instance directory')"
+        python fix_local_setup.py
+        
+        if %errorlevel% neq 0 (
+            echo.
+            echo ERROR: All database setup methods failed
+            echo Please manually run one of these:
+            echo   python inline_db_setup.py
+            echo   python setup_local_db.py
+            echo   python fix_local_setup.py
+            pause
+            exit /b 1
+        )
+    )
+)
+
+echo.
+echo Verifying database setup...
+python -c "import os; os.environ.setdefault('DATABASE_URL', 'sqlite:///./instance/email_guardian.db'); from app import app, db; from models import SecurityRule; app.app_context().push(); print(f'Database has {SecurityRule.query.count()} security rules')"
 
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to initialize database
-    echo Trying alternative setup method...
-    python -c "import sys; sys.path.append('.'); from app import app, db; app.app_context().push(); db.create_all(); print('Basic SQLite database initialized at: instance\\email_guardian.db')"
-    if %errorlevel% neq 0 (
-        echo ERROR: Database setup completely failed
-        pause
-        exit /b 1
-    )
+    echo WARNING: Database verification failed
+    echo You may need to run: python fix_local_setup.py
+) else (
+    echo ✓ Database setup verified successfully
 )
 
 echo.
@@ -89,6 +119,7 @@ echo Then open your browser to: http://localhost:5000
 echo.
 echo If you see "Dashboard data temporarily unavailable":
 echo   python fix_local_setup.py
+echo   OR see: DATABASE_TROUBLESHOOTING.md
 echo.
 echo Press any key to start the application now...
 pause
