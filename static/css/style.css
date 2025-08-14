@@ -30,8 +30,8 @@ body {
     bottom: 0;
     left: 0;
     z-index: 1000;
-    padding: 48px 0 0;
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    padding: 20px 0 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     width: var(--sidebar-width);
     background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
     overflow-y: auto;
@@ -64,11 +64,12 @@ body {
 /* Main Content */
 main {
     margin-left: var(--sidebar-width);
-    padding: 20px;
+    padding: 30px 25px;
     min-height: 100vh;
     width: calc(100% - var(--sidebar-width));
     max-width: calc(100% - var(--sidebar-width));
     overflow-x: auto;
+    background-color: #f8f9fa;
 }
 
 /* Cards */
@@ -346,9 +347,20 @@ main {
     
     main {
         margin-left: 0;
-        padding: 15px;
         width: 100%;
         max-width: 100%;
+    }
+    
+    main .container-fluid {
+        padding: 15px;
+    }
+    
+    .bg-white.border-bottom {
+        margin: 0 -15px 20px -15px;
+    }
+    
+    .bg-white.border-bottom .container-fluid {
+        padding: 15px 20px;
     }
     
     .table-responsive {
@@ -448,6 +460,30 @@ main {
 
 .status-warning {
     color: var(--warning-color);
+}
+
+/* Header Styling */
+.breadcrumb {
+    background: none;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "›";
+    color: #6c757d;
+}
+
+.breadcrumb-item a {
+    color: #007bff;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+/* Page Header */
+.text-gray-800 {
+    color: #5a5c69 !important;
 }
 
 /* Animation Classes */
