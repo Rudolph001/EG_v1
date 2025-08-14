@@ -10,8 +10,9 @@ class EmailRecord(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False)
     sender = db.Column(db.String(255), nullable=False)
     subject = db.Column(db.Text)
-    attachments = db.Column(db.Text)
-    original_recipients = db.Column(db.Text)  # Original recipients list
+    attachments = db.Column(db.Text)  # Store comma-separated attachments
+    original_recipients = db.Column(db.Text)  # Store comma-separated recipients
+    time_month = db.Column(db.String(20))  # New field for month data
     
     # Processing metadata
     processed_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -37,19 +38,16 @@ class RecipientRecord(db.Model):
     recipient = db.Column(db.String(255), nullable=False)
     recipient_email_domain = db.Column(db.String(255))
     
-    # User attributes
+    # Updated user attributes (new CSV format)
     leaver = db.Column(db.String(10))
-    termination = db.Column(db.String(50))
-    account_type = db.Column(db.String(50))
+    termination_date = db.Column(db.String(50))  # Changed from 'termination' to 'termination_date'
     bunit = db.Column(db.String(100))
     department = db.Column(db.String(100))
     
-    # Analysis results
-    wordlist_attachment = db.Column(db.Text)
-    wordlist_subject = db.Column(db.Text)
+    # CSV data fields
     user_response = db.Column(db.String(50))
     final_outcome = db.Column(db.String(50))
-    policy_name = db.Column(db.String(100))
+    policy_name = db.Column(db.Text)  # Changed to Text to handle comma-separated values
     justifications = db.Column(db.Text)
     
     # Pipeline results

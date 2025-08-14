@@ -32,6 +32,10 @@
                                 <td><strong>Timestamp:</strong></td>
                                 <td>{{ email.timestamp.strftime('%Y-%m-%d %H:%M:%S') if email.timestamp }}</td>
                             </tr>
+                            <tr>
+                                <td><strong>Time Month:</strong></td>
+                                <td>{{ email.time_month or 'N/A' }}</td>
+                            </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
@@ -90,7 +94,19 @@
                                     <td>{{ first_recipient.bunit or 'N/A' }}</td>
                                 </tr>
                                 <tr>
-                                    <td><strong>Policy Name:</strong></td>
+                                    <td><strong>Termination Date:</strong></td>
+                                    <td>{{ first_recipient.termination_date or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>User Response:</strong></td>
+                                    <td>{{ first_recipient.user_response or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Final Outcome:</strong></td>
+                                    <td>{{ first_recipient.final_outcome or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Policy Names:</strong></td>
                                     <td>{{ first_recipient.policy_name or 'N/A' }}</td>
                                 </tr>
                                 <tr>

@@ -89,11 +89,10 @@ class EmailProcessingPipeline:
         try:
             df = pd.read_csv(filepath)
 
-            # Validate required columns
+            # Validate required columns for new CSV format
             required_columns = [
-                '_time', 'sender', 'subject', 'attachments', 'recipients',
-                'recipients_email_domain', 'leaver', 'termination', 'account_type',
-                'wordlist_attachment', 'wordlist_subject', 'bunit', 'department',
+                '_time', 'sender', 'subject', 'attachments', 'recipients', 
+                'time_month', 'leaver', 'termination_date', 'bunit', 'department',
                 'user_response', 'final_outcome', 'policy_name', 'justifications'
             ]
 
@@ -107,7 +106,7 @@ class EmailProcessingPipeline:
             # Fill NaN values
             df = df.fillna('')
 
-            self.logger.info(f"Loaded {len(df)} records from CSV")
+            self.logger.info(f"Loaded {len(df)} records from CSV with new format")
             return df
 
         except Exception as e:
@@ -115,33 +114,42 @@ class EmailProcessingPipeline:
             raise
 
     def _stage_2_email_normalization(self, df):
-        """Stage 2: Split emails with multiple recipients/attachments"""
+        """Stage 2: Split emails with multiple recipients, attachments, and policy names"""
         self.logger.info("Stage 2: Email Normalization")
 
         normalized_rows = []
 
         for _, row in df.iterrows():
-            # Split recipients if multiple (handle both comma and semicolon separators)
+            # Split recipients (comma-separated)
             recipients_str = str(row['recipients']) if row['recipients'] else ''
-            # Try semicolon first, then comma
-            if ';' in recipients_str:
-                recipients = recipients_str.split(';')
-            else:
-                recipients = recipients_str.split(',')
-            recipients = [r.strip() for r in recipients if r.strip()]
-
+            recipients = [r.strip() for r in recipients_str.split(',') if r.strip()]
+            
             if not recipients:
                 recipients = ['']
+
+            # Split attachments (comma-separated) - store as single string per email
+            attachments_str = str(row['attachments']) if row['attachments'] else ''
+            attachments_list = [a.strip() for a in attachments_str.split(',') if a.strip()]
+            attachments_combined = ', '.join(attachments_list) if attachments_list else ''
+
+            # Split policy names (comma-separated) - store as single string per recipient
+            policy_name_str = str(row['policy_name']) if row['policy_name'] else ''
+            policy_names = [p.strip() for p in policy_name_str.split(',') if p.strip()]
+            policy_names_combined = ', '.join(policy_names) if policy_names else ''
 
             # Create normalized record for each recipient
             for recipient in recipients:
                 normalized_row = row.copy()
                 normalized_row['recipients'] = recipient
+                normalized_row['attachments'] = attachments_combined
+                normalized_row['policy_name'] = policy_names_combined
 
                 # Extract domain from recipient email
                 if '@' in recipient:
                     domain = recipient.split('@')[1].lower()
                     normalized_row['recipients_email_domain'] = domain
+                else:
+                    normalized_row['recipients_email_domain'] = ''
 
                 normalized_rows.append(normalized_row)
 
@@ -157,12 +165,9 @@ class EmailProcessingPipeline:
             recipient=recipient_data.get('recipients', ''),
             recipient_email_domain=recipient_data.get('recipients_email_domain', ''),
             leaver=recipient_data.get('leaver', ''),
-            termination=recipient_data.get('termination', ''),
-            account_type=recipient_data.get('account_type', ''),
+            termination_date=recipient_data.get('termination_date', ''),  # Updated field name
             bunit=recipient_data.get('bunit', ''),
             department=recipient_data.get('department', ''),
-            wordlist_attachment=recipient_data.get('wordlist_attachment', ''),
-            wordlist_subject=recipient_data.get('wordlist_subject', ''),
             user_response=recipient_data.get('user_response', ''),
             final_outcome=recipient_data.get('final_outcome', ''),
             policy_name=recipient_data.get('policy_name', ''),
@@ -394,6 +399,7 @@ class EmailProcessingPipeline:
             subject=first_recipient_data.get('subject', ''),
             attachments=first_recipient_data.get('attachments', ''),
             original_recipients=first_recipient_data.get('recipients', ''),
+            time_month=first_recipient_data.get('time_month', ''),
             pipeline_status='processing'
         )
 
