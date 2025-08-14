@@ -506,7 +506,7 @@ class EmailProcessingPipeline:
                     return pattern_value in leaver_value
             return False
         elif rule_type == 'termination':
-            termination_value = (recipient_record.termination or '').lower().strip()
+            termination_value = (recipient_record.termination_date or '').lower().strip()
             pattern_value = pattern.lower().strip()
             return pattern_value in termination_value or bool(termination_value)
         elif rule_type == 'recipients':
@@ -535,7 +535,7 @@ class EmailProcessingPipeline:
             sender_metadata = self._get_sender_metadata(email_record.sender)
             if sender_metadata:
                 return sender_metadata.termination or ''
-            return recipient_record.termination or ''
+            return recipient_record.termination_date or ''
         elif field == 'account_type':
             return recipient_record.account_type or ''
         elif field == 'bunit':
@@ -590,7 +590,7 @@ class EmailProcessingPipeline:
         # Recipient features
         features['is_external'] = 1 if recipient_record.recipient_email_domain else 0
         features['is_leaver'] = 1 if recipient_record.leaver == 'yes' else 0
-        features['has_termination'] = 1 if recipient_record.termination else 0
+        features['has_termination'] = 1 if recipient_record.termination_date else 0
 
         # Risk indicators
         features['security_score'] = recipient_record.security_score
