@@ -20,6 +20,7 @@ body {
 
 .container-fluid {
     padding: 0;
+    overflow-x: hidden;
 }
 
 /* Sidebar Styles */
@@ -28,11 +29,12 @@ body {
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 100;
+    z-index: 1000;
     padding: 48px 0 0;
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
     width: var(--sidebar-width);
     background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    overflow-y: auto;
 }
 
 .sidebar .nav-link {
@@ -63,6 +65,8 @@ body {
 main {
     margin-left: var(--sidebar-width);
     padding: 20px;
+    min-height: 100vh;
+    width: calc(100% - var(--sidebar-width));
 }
 
 /* Cards */
@@ -308,6 +312,7 @@ main {
     
     main {
         margin-left: 250px;
+        width: calc(100% - 250px);
     }
     
     .card-body h5 {
