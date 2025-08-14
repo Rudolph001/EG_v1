@@ -147,7 +147,13 @@
                             <input type="checkbox" class="form-check-input email-checkbox" value="{{ email.id }}" name="selected_emails">
                         </td>
                         <td><code>EMAIL-{{ email.id }}</code></td>
-                        <td>{{ email.sender }}</td>
+                        <td>
+                            {{ email.sender }}
+                            {% set sender_metadata = email.sender_metadata %}
+                            {% if sender_metadata and sender_metadata.leaver == 'yes' %}
+                                <br><span class="badge bg-danger"><i class="fas fa-user-times"></i> LEAVER</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="text-truncate" style="max-width: 200px;" title="{{ email.subject }}">
                                 {{ email.subject or 'No Subject' }}
